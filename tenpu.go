@@ -5,7 +5,6 @@ import (
 	"io"
 	"launchpad.net/mgo"
 	"launchpad.net/mgo/bson"
-	"mime/multipart"
 )
 
 var CollectionName = "attachments"
@@ -15,7 +14,7 @@ type Client struct {
 }
 
 type Storage interface {
-	Put(part *multipart.Part, attachment *Attachment) (err error)
+	Put(filename string, contentType string, body io.Reader, attachment *Attachment) (err error)
 	Copy(attachment *Attachment, w io.Writer) (err error)
 }
 
@@ -37,6 +36,13 @@ func (att *Attachment) MakeId() interface{} {
 func Attachments(ownerid string) (r []*Attachment) {
 	mgodb.CollectionDo(CollectionName, func(c *mgo.Collection) {
 		c.Find(bson.M{"ownerid": ownerid}).All(&r)
+	})
+	return
+}
+
+func AttachmentById(id string) (r *Attachment) {
+	mgodb.CollectionDo(CollectionName, func(c *mgo.Collection) {
+		c.Find(bson.M{"_id": id}).One(&r)
 	})
 	return
 }

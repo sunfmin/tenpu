@@ -6,22 +6,21 @@ import (
 	"io"
 	"launchpad.net/mgo"
 	"launchpad.net/mgo/bson"
-	"mime/multipart"
 )
 
 type Storage struct {
 }
 
-func (s *Storage) Put(part *multipart.Part, attachment *tenpu.Attachment) (err error) {
+func (s *Storage) Put(filename string, contentType string, body io.Reader, attachment *tenpu.Attachment) (err error) {
 	var f *mgo.GridFile
 	mgodb.DatabaseDo(func(db *mgo.Database) {
-		f, err = db.GridFS("fs").Create(part.FileName())
+		f, err = db.GridFS("fs").Create(filename)
 		defer f.Close()
 		if err != nil {
 			panic(err)
 		}
-		f.SetContentType(part.Header["Content-Type"][0])
-		io.Copy(f, part)
+		f.SetContentType(contentType)
+		io.Copy(f, body)
 
 	})
 

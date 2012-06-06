@@ -73,7 +73,6 @@ func MakeUploader(ownerName string, category string, storage Storage) http.Handl
 		}
 
 		var ownerId string
-
 		var part *multipart.Part
 		var attachments []*Attachment
 		for {
@@ -93,11 +92,10 @@ func MakeUploader(ownerName string, category string, storage Storage) http.Handl
 				writeJson(w, fmt.Sprintf("ownerId required, Please put a hidden field in form called `%s`", ownerName), nil)
 				return
 			}
-
 			att := &Attachment{}
 			att.Category = category
 			att.OwnerId = ownerId
-			err = storage.Put(part, att)
+			err = storage.Put(part.FileName(), part.Header["Content-Type"][0], part, att)
 			if err != nil {
 				att.Error = err.Error()
 			}
