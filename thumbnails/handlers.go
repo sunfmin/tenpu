@@ -20,8 +20,36 @@ var CollectionName = "thumbnails"
 
 type ThumbnailSpec struct {
 	Name   string
-	Width  int64
-	Height int64
+	Width  int
+	Height int
+}
+
+func (ts *ThumbnailSpec) CalculateRect(rect image.Rectangle) (w int, h int) {
+	if ts.Width == 0 && ts.Height == 0 {
+		panic("tenpu/thumbnails: must provide width, or height for thumbnails.")
+	}
+
+	if ts.Height == 0 {
+		w = ts.Width
+		h = int((float64(ts.Width) / float64(rect.Dx())) * float64(rect.Dy()))
+		return
+	}
+
+	if ts.Width == 0 {
+		h = ts.Height
+		w = int((float64(ts.Height) / float64(rect.Dy())) * float64(rect.Dx()))
+		return
+	}
+
+	if (float64(ts.Width)/float64(rect.Dx()))*float64(rect.Dy()) > float64(ts.Height) {
+		h = ts.Height
+		w = int((float64(ts.Height) / float64(rect.Dy())) * float64(rect.Dx()))
+		return
+	}
+
+	w = ts.Width
+	h = int((float64(ts.Width) / float64(rect.Dx())) * float64(rect.Dy()))
+	return
 }
 
 type Thumbnail struct {
@@ -105,8 +133,8 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 				Name:     thumbName,
 				ParentId: id,
 				BodyId:   thumbAtt.Id,
-				Width:    width,
-				Height:   height,
+				Width:    int64(width),
+				Height:   int64(height),
 			}
 			mgodb.Save(CollectionName, thumb)
 		}
@@ -132,14 +160,15 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 	}
 }
 
-func resize(from *bytes.Buffer, spec *ThumbnailSpec) (to io.Reader, w int64, h int64, err error) {
-	dst := image.NewRGBA(image.Rect(0, 0, 80, 60))
+func resize(from *bytes.Buffer, spec *ThumbnailSpec) (to io.Reader, w int, h int, err error) {
 
 	src, name, err := image.Decode(from)
-
 	if err != nil {
 		return
 	}
+
+	w, h = spec.CalculateRect(src.Bounds())
+	dst := image.NewRGBA(image.Rect(0, 0, w, h))
 
 	var buf bytes.Buffer
 	if err = graphics.Thumbnail(dst, src); err != nil {
