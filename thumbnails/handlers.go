@@ -2,9 +2,9 @@ package thumbnails
 
 import (
 	"bytes"
-	"code.google.com/p/graphics-go/graphics"
 	"fmt"
 	"github.com/sunfmin/mgodb"
+	"github.com/sunfmin/resize"
 	"github.com/sunfmin/tenpu"
 	"image"
 	_ "image/gif"
@@ -117,7 +117,7 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 			config.Storage.Copy(att, &buf)
 			thumbAtt := &tenpu.Attachment{}
 
-			body, width, height, err := resize(&buf, spec)
+			body, width, height, err := resizeThumbnail(&buf, spec)
 
 			if err != nil {
 				log.Printf("tenpu/thumbnails: %+v", err)
@@ -160,21 +160,21 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 	}
 }
 
-func resize(from *bytes.Buffer, spec *ThumbnailSpec) (to io.Reader, w int, h int, err error) {
+func resizeThumbnail(from *bytes.Buffer, spec *ThumbnailSpec) (to io.Reader, w int, h int, err error) {
 
 	src, name, err := image.Decode(from)
 	if err != nil {
 		return
 	}
+	srcB := src.Bounds()
 
-	w, h = spec.CalculateRect(src.Bounds())
-	dst := image.NewRGBA(image.Rect(0, 0, w, h))
+	w, h = spec.CalculateRect(srcB)
+
+	rect := image.Rect(0, 0, srcB.Dx(), srcB.Dy())
+
+	dst := resize.Resize(src, rect, w, h)
 
 	var buf bytes.Buffer
-	if err = graphics.Thumbnail(dst, src); err != nil {
-		log.Println(err)
-	}
-
 	switch name {
 	case "jpeg":
 		jpeg.Encode(&buf, dst, &jpeg.Options{95})
