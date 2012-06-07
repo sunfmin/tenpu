@@ -28,8 +28,8 @@ func TestThumbnailLoader(t *testing.T) {
 
 	st := gridfs.NewStorage()
 
-	http.HandleFunc("/postupload", tenpu.MakeUploader("OwnerId", "posts", st))
-	http.HandleFunc("/load", thumbnails.MakeLoader(&thumbnails.Configuration{
+	http.HandleFunc("/thumbpostupload", tenpu.MakeUploader("OwnerId", "posts", st))
+	http.HandleFunc("/thumbload", thumbnails.MakeLoader(&thumbnails.Configuration{
 		IdentifierName:     "id",
 		ThumbnailParamName: "thumb",
 		Storage:            gridfs.NewStorage(),
@@ -44,7 +44,7 @@ func TestThumbnailLoader(t *testing.T) {
 	var err error
 
 	s := integrationtest.NewSession()
-	res := integrationtest.Must(s.PostMultipart(ts.URL+"/postupload", func(w *multipart.Writer) {
+	res := integrationtest.Must(s.PostMultipart(ts.URL+"/thumbpostupload", func(w *multipart.Writer) {
 		w.WriteField("OwnerId", "my12345")
 		p1, err := w.CreateFormFile("t", "t.jpg")
 		if err != nil {
@@ -70,7 +70,7 @@ func TestThumbnailLoader(t *testing.T) {
 		t.Errorf("%+v", atts)
 	}
 
-	res, err = http.Get(ts.URL + fmt.Sprintf("/load?id=%s&thumb=icon", atts[0].Id))
+	res, err = http.Get(ts.URL + fmt.Sprintf("/thumbload?id=%s&thumb=icon", atts[0].Id))
 	if err != nil {
 		panic(err)
 	}

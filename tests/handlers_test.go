@@ -58,11 +58,11 @@ func TestUploader(t *testing.T) {
 func TestUploadWithoutOwnerId(t *testing.T) {
 	mgodb.Setup("localhost", "tenpu_test")
 
-	http.HandleFunc("/postupload", tenpu.MakeUploader("OwnerId", "posts", gridfs.NewStorage()))
+	http.HandleFunc("/errorpostupload", tenpu.MakeUploader("OwnerId", "posts", gridfs.NewStorage()))
 	ts := httptest.NewServer(http.DefaultServeMux)
 	defer ts.Close()
 
-	req, _ := http.NewRequest("POST", ts.URL+"/postupload", strings.NewReader(noOwnerIdPostContent))
+	req, _ := http.NewRequest("POST", ts.URL+"/errorpostupload", strings.NewReader(noOwnerIdPostContent))
 	req.Header.Set("Content-Type", "multipart/form-data; boundary=----WebKitFormBoundarySHaDkk90eMKgsVUj")
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -70,7 +70,7 @@ func TestUploadWithoutOwnerId(t *testing.T) {
 	}
 	b, _ := ioutil.ReadAll(res.Body)
 	strb := string(b)
-	if !strings.Contains(strb, "the file content a") {
+	if !strings.Contains(strb, "ownerId required") {
 		t.Errorf("%+v", strb)
 	}
 

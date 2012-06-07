@@ -9,7 +9,7 @@ import (
 	"image"
 	_ "image/gif"
 	"image/jpeg"
-	_ "image/png"
+	"image/png"
 	"io"
 	"launchpad.net/mgo/bson"
 	"log"
@@ -174,9 +174,16 @@ func resize(from *bytes.Buffer, spec *ThumbnailSpec) (to io.Reader, w int, h int
 	if err = graphics.Thumbnail(dst, src); err != nil {
 		log.Println(err)
 	}
-	if name == "jpeg" {
+
+	switch name {
+	case "jpeg":
+		jpeg.Encode(&buf, dst, &jpeg.Options{95})
+	case "png":
+		png.Encode(&buf, dst)
+	case "gif":
 		jpeg.Encode(&buf, dst, &jpeg.Options{95})
 	}
+
 	to = &buf
 	return
 }
