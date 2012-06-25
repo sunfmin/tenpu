@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/sunfmin/mgodb"
 	"io"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 	"mime/multipart"
 	"net/http"
 )

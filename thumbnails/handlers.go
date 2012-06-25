@@ -11,7 +11,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 	"log"
 	"net/http"
 )

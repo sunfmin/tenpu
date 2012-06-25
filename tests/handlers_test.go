@@ -5,7 +5,7 @@ import (
 	"github.com/sunfmin/tenpu"
 	"github.com/sunfmin/tenpu/gridfs"
 	"io/ioutil"
-	"launchpad.net/mgo"
+	"labix.org/v2/mgo"
 	"net/http"
 	"net/http/httptest"
 	"strings"

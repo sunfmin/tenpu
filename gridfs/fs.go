@@ -4,8 +4,8 @@ import (
 	"github.com/sunfmin/mgodb"
 	"github.com/sunfmin/tenpu"
 	"io"
-	"launchpad.net/mgo"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 )
 
 type Storage struct {

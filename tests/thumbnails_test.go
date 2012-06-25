@@ -9,7 +9,7 @@ import (
 	"github.com/sunfmin/tenpu/thumbnails"
 	"io"
 	"io/ioutil"
-	"launchpad.net/mgo"
+	"labix.org/v2/mgo"
 	// "log"
 	"mime/multipart"
 	"net/http"

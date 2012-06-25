@@ -3,8 +3,8 @@ package tenpu
 import (
 	"github.com/sunfmin/mgodb"
 	"io"
-	"launchpad.net/mgo"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 )
 
 var CollectionName = "attachments"
