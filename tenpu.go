@@ -5,6 +5,7 @@ import (
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"path"
 )
 
 var CollectionName = "attachments"
@@ -31,6 +32,23 @@ type Attachment struct {
 
 func (att *Attachment) MakeId() interface{} {
 	return att.Id
+}
+
+func (att *Attachment) IsImage() (r bool) {
+	switch att.ContentType {
+	default:
+		r = false
+	case "image/png", "image/jpeg", "image/gif":
+		r = true
+	}
+	return
+
+}
+
+func (att *Attachment) Extname() (r string) {
+	r = path.Ext(att.Filename)
+	r = r[1:]
+	return
 }
 
 func Attachments(ownerid string) (r []*Attachment) {
