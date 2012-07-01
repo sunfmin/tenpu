@@ -9,8 +9,7 @@ import (
 	"github.com/sunfmin/tenpu/thumbnails"
 	"io"
 	"io/ioutil"
-	"labix.org/v2/mgo"
-	// "log"
+	"labix.org/v2/mgo/bson"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -22,9 +21,7 @@ import (
 func TestThumbnailLoader(t *testing.T) {
 
 	mgodb.Setup("localhost", "tenpu_test")
-	mgodb.CollectionDo(tenpu.CollectionName, func(c *mgo.Collection) {
-		c.DropCollection()
-	})
+	mgodb.DropCollections(tenpu.CollectionName, thumbnails.CollectionName)
 
 	st := gridfs.NewStorage()
 
@@ -83,4 +80,12 @@ func TestThumbnailLoader(t *testing.T) {
 	defer f.Close()
 
 	io.Copy(f, res.Body)
+
+	http.Get(ts.URL + fmt.Sprintf("/thumbload?id=%s&thumb=icon", atts[0].Id))
+
+	var thumbs []thumbnails.Thumbnail
+	mgodb.FindAll(thumbnails.CollectionName, bson.M{}, &thumbs)
+	if len(thumbs) != 1 {
+		t.Errorf("%+v", thumbs)
+	}
 }

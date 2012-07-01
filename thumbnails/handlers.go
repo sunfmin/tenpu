@@ -110,7 +110,7 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 		}
 
 		var thumb *Thumbnail
-		mgodb.FindOne(CollectionName, bson.M{"attachmentid": id, "name": thumbName}, &thumb)
+		mgodb.FindOne(CollectionName, bson.M{"parentid": id, "name": thumbName}, &thumb)
 
 		if thumb == nil {
 			var buf bytes.Buffer
