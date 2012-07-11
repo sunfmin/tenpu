@@ -74,7 +74,13 @@ func MakeDeleter(AttachmentIdName string, storage Storage) http.HandlerFunc {
 		}
 
 		att, err := deleteAttachment(id, storage)
-		writeJson(w, err.Error(), []*Attachment{att})
+
+		if err != nil {
+			writeJson(w, err.Error(), []*Attachment{att})
+			return
+		}
+
+		writeJson(w, "", []*Attachment{att})
 		return
 	}
 }
