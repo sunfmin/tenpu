@@ -154,16 +154,6 @@ func makeUploader(ownerName string, category string, clear bool, storage Storage
 
 		if clear {
 			ats := Attachments(ownerId)
-			//for _, newAt := range attachments {
-			//for i := len(ats) - 1; i >= 0; i -= 1 {
-			//if ats[i].OwnerId == newAt.OwnerId && ats[i].Id != newAt.Id {
-			//_, err = deleteAttachment(ats[i].Id, storage)
-			//if err != nil {
-			//err = errors.New("Delate attachment has error")
-			//}
-			//}
-			//}
-			//}
 			for i := len(ats) - 1; i >= 0; i -= 1 {
 				found := false
 				for _, newAt := range attachments {
@@ -174,14 +164,10 @@ func makeUploader(ownerName string, category string, clear bool, storage Storage
 				}
 				if found {
 					continue
-				} else {
-					for _, newAt := range attachments {
-						if newAt.OwnerId == ats[i].OwnerId {
-							_, err = deleteAttachment(ats[i].Id, storage)
-							if err != nil {
-								err = errors.New("Delate attachment has error")
-							}
-						}
+				}
+				for _, newAt := range attachments {
+					if newAt.OwnerId == ats[i].OwnerId {
+						_, err = deleteAttachment(ats[i].Id, storage)
 					}
 				}
 			}
@@ -191,10 +177,9 @@ func makeUploader(ownerName string, category string, clear bool, storage Storage
 		if err != nil {
 			writeJson(w, err.Error(), ats)
 			return
-		} else {
-			//writeJson(w, "attachments uploaded OK", ats)
-			writeJson(w, "", ats)
 		}
+
+		writeJson(w, "", ats)
 		return
 	}
 }
