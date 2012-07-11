@@ -12,8 +12,59 @@ import (
 	"testing"
 )
 
-func TestUploader(t *testing.T) {
+func TestMakeClearUploader(t *testing.T) {
+	mgodb.Setup("localhost", "tenpu_test")
+	mgodb.CollectionDo(tenpu.CollectionName, func(c *mgo.Collection) {
+		c.DropCollection()
+	})
 
+	st := gridfs.NewStorage()
+
+	http.HandleFunc("/upload_avatar", tenpu.MakeClearUploader("OwnerId", "posts", st))
+	http.HandleFunc("/load_avatar", tenpu.MakeFileLoader("id", st))
+	ts := httptest.NewServer(http.DefaultServeMux)
+	defer ts.Close()
+
+	//upload attachment repeatly
+	req, _ := http.NewRequest("POST", ts.URL+"/upload_avatar", strings.NewReader(singlePartContent))
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=----WebKitFormBoundarySHaDkk90eMKgsVUj")
+	res, err := http.DefaultClient.Do(req)
+
+	req, _ = http.NewRequest("POST", ts.URL+"/upload_avatar", strings.NewReader(singlePartContent))
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=----WebKitFormBoundarySHaDkk90eMKgsVUj")
+	res, err = http.DefaultClient.Do(req)
+
+	req, _ = http.NewRequest("POST", ts.URL+"/upload_avatar", strings.NewReader(singlePartContent))
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=----WebKitFormBoundarySHaDkk90eMKgsVUj")
+	res, err = http.DefaultClient.Do(req)
+
+	if err != nil {
+		panic(err)
+	}
+	b, _ := ioutil.ReadAll(res.Body)
+	strb := string(b)
+	if !strings.Contains(strb, "4facead362911fa23c000002") {
+		t.Errorf("%+v", strb)
+	}
+
+	atts := tenpu.Attachments("4facead362911fa23c000002")
+	if len(atts) != 1 {
+		t.Errorf("%+v", atts[0])
+	}
+
+	res, err = http.Get(ts.URL + "/load_avatar?id=" + atts[0].Id)
+	if err != nil {
+		panic(err)
+	}
+
+	b, _ = ioutil.ReadAll(res.Body)
+	strb = string(b)
+	if strb != "the file content c\n" {
+		t.Errorf("%+v", strb)
+	}
+}
+
+func TestUploader(t *testing.T) {
 	mgodb.Setup("localhost", "tenpu_test")
 	mgodb.CollectionDo(tenpu.CollectionName, func(c *mgo.Collection) {
 		c.DropCollection()
@@ -53,6 +104,11 @@ func TestUploader(t *testing.T) {
 	if strb != "the file content a\n" {
 		t.Errorf("%+v", strb)
 	}
+
+	//for _, at := range atts {
+	//st.Delete(at)
+	//tenpu.RemoveAttachmentById(at.Id)
+	//}
 }
 
 func TestUploadWithoutOwnerId(t *testing.T) {
@@ -75,6 +131,21 @@ func TestUploadWithoutOwnerId(t *testing.T) {
 	}
 
 }
+
+const singlePartContent = `
+
+------WebKitFormBoundarySHaDkk90eMKgsVUj
+Content-Disposition: form-data; name="OwnerId"
+
+4facead362911fa23c000002
+------WebKitFormBoundarySHaDkk90eMKgsVUj
+Content-Disposition: form-data; name="Files[]"; filename="filec.txt"
+Content-Type: text/plain
+
+the file content c
+
+------WebKitFormBoundarySHaDkk90eMKgsVUj--
+`
 
 const multipartContent = `
 
