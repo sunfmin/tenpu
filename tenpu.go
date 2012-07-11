@@ -16,6 +16,7 @@ type Client struct {
 
 type Storage interface {
 	Put(filename string, contentType string, body io.Reader, attachment *Attachment) (err error)
+	Delete(attachment *Attachment) (err error)
 	Copy(attachment *Attachment, w io.Writer) (err error)
 }
 
@@ -61,6 +62,13 @@ func Attachments(ownerid string) (r []*Attachment) {
 func AttachmentById(id string) (r *Attachment) {
 	mgodb.CollectionDo(CollectionName, func(c *mgo.Collection) {
 		c.Find(bson.M{"_id": id}).One(&r)
+	})
+	return
+}
+
+func RemoveAttachmentById(id string) (err error) {
+	mgodb.CollectionDo(CollectionName, func(c *mgo.Collection) {
+		c.Remove(bson.M{"_id": id})
 	})
 	return
 }

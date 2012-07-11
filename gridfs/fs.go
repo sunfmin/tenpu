@@ -47,3 +47,10 @@ func NewStorage() (s *Storage) {
 	s = &Storage{}
 	return
 }
+
+func (s *Storage) Delete(attachment *tenpu.Attachment) (err error) {
+	mgodb.DatabaseDo(func(db *mgo.Database) {
+		err = db.GridFS("fs").RemoveId(bson.ObjectIdHex(attachment.Id))
+	})
+	return
+}

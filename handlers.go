@@ -3,6 +3,7 @@ package tenpu
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/sunfmin/mgodb"
 	"io"
@@ -60,7 +61,43 @@ func MakeFileLoader(identifierName string, storage Storage) http.HandlerFunc {
 	}
 }
 
+func MakeDeleter(AttachmentIdName string, storage Storage) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.FormValue("Id")
+		var err error
+
+		if id == "" {
+			err = errors.New("id required.")
+			writeJson(w, err.Error(), []*Attachment{})
+			return
+		}
+
+		att, err := deleteAttachment(id, storage)
+		writeJson(w, err.Error(), []*Attachment{att})
+		return
+	}
+}
+
+func deleteAttachment(id string, storage Storage) (att *Attachment, err error) {
+	att = AttachmentById(id)
+	err = storage.Delete(att)
+	if err != nil {
+		return
+	}
+	err = RemoveAttachmentById(id)
+	return
+}
+
 func MakeUploader(ownerName string, category string, storage Storage) http.HandlerFunc {
+	return makeUploader(ownerName, category, false, storage)
+}
+
+func MakeClearUploader(ownerName string, category string, storage Storage) http.HandlerFunc {
+	return makeUploader(ownerName, category, true, storage)
+}
+
+func makeUploader(ownerName string, category string, clear bool, storage Storage) http.HandlerFunc {
 	if storage == nil {
 		panic("storage must be provided.")
 	}
@@ -75,6 +112,7 @@ func MakeUploader(ownerName string, category string, storage Storage) http.Handl
 		var ownerId string
 		var part *multipart.Part
 		var attachments []*Attachment
+
 		for {
 			part, err = mr.NextPart()
 			if err != nil {
@@ -106,15 +144,42 @@ func MakeUploader(ownerName string, category string, storage Storage) http.Handl
 			return
 		}
 
-		hasError := ""
 		for _, att := range attachments {
 			if att.Error != "" {
-				hasError = "Some attachment has error"
+				err = errors.New("Some attachment has error")
 			} else {
 				mgodb.Save(CollectionName, att)
 			}
 		}
-		writeJson(w, hasError, attachments)
+
+		if clear {
+			ats := Attachments(ownerId)
+			for i := len(ats) - 1; i >= 0; i -= 1 {
+				found := false
+				for _, newAt := range attachments {
+					if ats[i].Id == newAt.Id {
+						found = true
+						break
+					}
+				}
+				if found {
+					continue
+				}
+				for _, newAt := range attachments {
+					if newAt.OwnerId == ats[i].OwnerId {
+						_, err = deleteAttachment(ats[i].Id, storage)
+					}
+				}
+			}
+		}
+
+		ats := Attachments(ownerId)
+		if err != nil {
+			writeJson(w, err.Error(), ats)
+			return
+		}
+
+		writeJson(w, "", ats)
 		return
 	}
 }
