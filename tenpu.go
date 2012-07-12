@@ -48,13 +48,22 @@ func (att *Attachment) IsImage() (r bool) {
 
 func (att *Attachment) Extname() (r string) {
 	r = path.Ext(att.Filename)
-	r = r[1:]
+	if len(r) > 0 {
+		r = r[1:]
+	}
 	return
 }
 
 func Attachments(ownerid string) (r []*Attachment) {
 	mgodb.CollectionDo(CollectionName, func(c *mgo.Collection) {
 		c.Find(bson.M{"ownerid": ownerid}).All(&r)
+	})
+	return
+}
+
+func AttachmentsByOwnerIds(ownerids []string) (r []*Attachment) {
+	mgodb.CollectionDo(CollectionName, func(c *mgo.Collection) {
+		c.Find(bson.M{"ownerid": bson.M{"$in": ownerids}}).All(&r)
 	})
 	return
 }
