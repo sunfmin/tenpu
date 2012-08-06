@@ -14,6 +14,8 @@ import (
 
 func TestMakeClearUploader(t *testing.T) {
 	mgodb.Setup("localhost", "tenpu_test")
+	db := mgodb.NewDatabase("localhost", "tenpu_test")
+
 	mgodb.CollectionDo(tenpu.CollectionName, func(c *mgo.Collection) {
 		c.DropCollection()
 	})
@@ -47,7 +49,8 @@ func TestMakeClearUploader(t *testing.T) {
 		t.Errorf("%+v", strb)
 	}
 
-	atts := tenpu.Attachments("4facead362911fa23c000002")
+	dbc := tenpu.DatabaseClient{Database: db}
+	atts := dbc.Attachments("4facead362911fa23c000002")
 	if len(atts) != 1 {
 		t.Errorf("%+v", atts[0])
 	}
@@ -66,6 +69,7 @@ func TestMakeClearUploader(t *testing.T) {
 
 func TestUploader(t *testing.T) {
 	mgodb.Setup("localhost", "tenpu_test")
+	db := mgodb.NewDatabase("localhost", "tenpu_test")
 	mgodb.CollectionDo(tenpu.CollectionName, func(c *mgo.Collection) {
 		c.DropCollection()
 	})
@@ -89,7 +93,8 @@ func TestUploader(t *testing.T) {
 		t.Errorf("%+v", strb)
 	}
 
-	atts := tenpu.Attachments("4facead362911fa23c000001")
+	dbc := tenpu.DatabaseClient{Database: db}
+	atts := dbc.Attachments("4facead362911fa23c000001")
 	if len(atts) != 2 {
 		t.Errorf("%+v", atts[0])
 	}
@@ -104,11 +109,6 @@ func TestUploader(t *testing.T) {
 	if strb != "the file content a\n" {
 		t.Errorf("%+v", strb)
 	}
-
-	//for _, at := range atts {
-	//st.Delete(at)
-	//tenpu.RemoveAttachmentById(at.Id)
-	//}
 }
 
 func TestUploadWithoutOwnerId(t *testing.T) {

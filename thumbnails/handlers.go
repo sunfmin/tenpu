@@ -3,7 +3,6 @@ package thumbnails
 import (
 	"bytes"
 	"fmt"
-	"github.com/sunfmin/mgodb"
 	"github.com/sunfmin/resize"
 	"github.com/sunfmin/tenpu"
 	"image"
@@ -103,14 +102,14 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 		}
 
 		var att *tenpu.Attachment
-		mgodb.FindOne(tenpu.CollectionName, bson.M{"_id": id}, &att)
+		config.Storage.Database().FindOne(tenpu.CollectionName, bson.M{"_id": id}, &att)
 		if att == nil {
 			http.NotFound(w, r)
 			return
 		}
 
 		var thumb *Thumbnail
-		mgodb.FindOne(CollectionName, bson.M{"parentid": id, "name": thumbName}, &thumb)
+		config.Storage.Find(CollectionName, bson.M{"parentid": id, "name": thumbName}, &thumb)
 
 		if thumb == nil {
 			var buf bytes.Buffer
@@ -127,7 +126,7 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 
 			config.Storage.Put(att.Filename, att.ContentType, body, thumbAtt)
 
-			mgodb.Save(tenpu.CollectionName, thumbAtt)
+			config.Storage.Database().Save(tenpu.CollectionName, thumbAtt)
 
 			thumb = &Thumbnail{
 				Name:     thumbName,
@@ -136,10 +135,11 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 				Width:    int64(width),
 				Height:   int64(height),
 			}
-			mgodb.Save(CollectionName, thumb)
+			config.Storage.Database().Save(CollectionName, thumb)
 		}
 
-		thumbAttachment := tenpu.AttachmentById(thumb.BodyId)
+		dbc := tenpu.DatabaseClient{Database: config.Storage.Database()}
+		thumbAttachment := dbc.AttachmentById(thumb.BodyId)
 		if thumbAttachment == nil {
 			log.Printf("tenpu/thumbnails: Can't find body attachment by %+v", thumb)
 			http.NotFound(w, r)

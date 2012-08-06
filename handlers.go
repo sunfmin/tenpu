@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/sunfmin/mgodb"
 	"io"
 	"labix.org/v2/mgo/bson"
 	"mime/multipart"
@@ -41,7 +40,7 @@ func MakeFileLoader(identifierName string, storage Storage) http.HandlerFunc {
 			return
 		}
 		var att *Attachment
-		mgodb.FindOne(CollectionName, bson.M{"_id": id}, &att)
+		storage.Find(CollectionName, bson.M{"_id": id}, &att)
 		if att == nil {
 			http.NotFound(w, r)
 			return
@@ -86,13 +85,19 @@ func MakeDeleter(AttachmentIdName string, storage Storage) http.HandlerFunc {
 }
 
 func deleteAttachment(id string, storage Storage) (att *Attachment, err error) {
-	att = AttachmentById(id)
+	dbc := DatabaseClient{Database: storage.Database()}
+	att = dbc.AttachmentById(id)
 	err = storage.Delete(att)
 	if err != nil {
 		return
 	}
-	err = RemoveAttachmentById(id)
+
+	err = dbc.RemoveAttachmentById(id)
 	return
+}
+
+func MakeTheUploader(ownerName string, category string, clear bool, storage Storage) http.HandlerFunc {
+	return makeUploader(ownerName, category, clear, storage)
 }
 
 func MakeUploader(ownerName string, category string, storage Storage) http.HandlerFunc {
@@ -154,12 +159,13 @@ func makeUploader(ownerName string, category string, clear bool, storage Storage
 			if att.Error != "" {
 				err = errors.New("Some attachment has error")
 			} else {
-				mgodb.Save(CollectionName, att)
+				storage.Database().Save(CollectionName, att)
 			}
 		}
 
 		if clear {
-			ats := Attachments(ownerId)
+			dbc := DatabaseClient{Database: storage.Database()}
+			ats := dbc.Attachments(ownerId)
 			for i := len(ats) - 1; i >= 0; i -= 1 {
 				found := false
 				for _, newAt := range attachments {
@@ -179,7 +185,8 @@ func makeUploader(ownerName string, category string, clear bool, storage Storage
 			}
 		}
 
-		ats := Attachments(ownerId)
+		dbc := DatabaseClient{Database: storage.Database()}
+		ats := dbc.Attachments(ownerId)
 		if err != nil {
 			writeJson(w, err.Error(), ats)
 			return
