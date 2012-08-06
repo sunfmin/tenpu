@@ -21,6 +21,7 @@ import (
 func TestThumbnailLoader(t *testing.T) {
 
 	mgodb.Setup("localhost", "tenpu_test")
+	db := mgodb.NewDatabase("localhost", "tenpu_test")
 	mgodb.DropCollections(tenpu.CollectionName, thumbnails.CollectionName)
 
 	st := gridfs.NewStorage()
@@ -62,7 +63,8 @@ func TestThumbnailLoader(t *testing.T) {
 		t.Errorf("%+v", strb)
 	}
 
-	atts := tenpu.Attachments("my12345")
+	dbc := tenpu.DatabaseClient{Database: db}
+	atts := dbc.Attachments("my12345")
 	if len(atts) != 1 {
 		t.Errorf("%+v", atts)
 	}
