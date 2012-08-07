@@ -10,14 +10,12 @@ import (
 
 var CollectionName = "attachments"
 
-type Client struct {
-	Storage Storage
-}
-
 type Storage interface {
 	Put(filename string, contentType string, body io.Reader, attachment *Attachment) (err error)
 	Delete(attachment *Attachment) (err error)
 	Copy(attachment *Attachment, w io.Writer) (err error)
+	Find(collectionName string, query interface{}, result interface{}) (err error)
+	Database() *mgodb.Database
 }
 
 type Attachment struct {
@@ -77,6 +75,38 @@ func AttachmentById(id string) (r *Attachment) {
 
 func RemoveAttachmentById(id string) (err error) {
 	mgodb.CollectionDo(CollectionName, func(c *mgo.Collection) {
+		c.Remove(bson.M{"_id": id})
+	})
+	return
+}
+
+type DatabaseClient struct {
+	Database *mgodb.Database
+}
+
+func (dbc *DatabaseClient) Attachments(ownerid string) (r []*Attachment) {
+	dbc.Database.CollectionDo(CollectionName, func(c *mgo.Collection) {
+		c.Find(bson.M{"ownerid": ownerid}).All(&r)
+	})
+	return
+}
+
+func (dbc *DatabaseClient) AttachmentsByOwnerIds(ownerids []string) (r []*Attachment) {
+	dbc.Database.CollectionDo(CollectionName, func(c *mgo.Collection) {
+		c.Find(bson.M{"ownerid": bson.M{"$in": ownerids}}).All(&r)
+	})
+	return
+}
+
+func (dbc *DatabaseClient) AttachmentById(id string) (r *Attachment) {
+	dbc.Database.CollectionDo(CollectionName, func(c *mgo.Collection) {
+		c.Find(bson.M{"_id": id}).One(&r)
+	})
+	return
+}
+
+func (dbc *DatabaseClient) RemoveAttachmentById(id string) (err error) {
+	dbc.Database.CollectionDo(CollectionName, func(c *mgo.Collection) {
 		c.Remove(bson.M{"_id": id})
 	})
 	return

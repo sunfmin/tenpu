@@ -9,11 +9,21 @@ import (
 )
 
 type Storage struct {
+	database *mgodb.Database
+}
+
+func (s *Storage) Database() *mgodb.Database {
+	return s.database
+}
+
+func (s *Storage) Find(collectionName string, query interface{}, result interface{}) (err error) {
+	return s.database.FindOne(collectionName, query, result)
 }
 
 func (s *Storage) Put(filename string, contentType string, body io.Reader, attachment *tenpu.Attachment) (err error) {
 	var f *mgo.GridFile
-	mgodb.DatabaseDo(func(db *mgo.Database) {
+
+	s.database.DatabaseDo(func(db *mgo.Database) {
 		f, err = db.GridFS("fs").Create(filename)
 		defer f.Close()
 		if err != nil {
@@ -33,7 +43,7 @@ func (s *Storage) Put(filename string, contentType string, body io.Reader, attac
 }
 
 func (s *Storage) Copy(attachment *tenpu.Attachment, w io.Writer) (err error) {
-	mgodb.DatabaseDo(func(db *mgo.Database) {
+	s.database.DatabaseDo(func(db *mgo.Database) {
 		f, err := db.GridFS("fs").OpenId(bson.ObjectIdHex(attachment.Id))
 		if err == nil {
 			defer f.Close()
@@ -45,11 +55,17 @@ func (s *Storage) Copy(attachment *tenpu.Attachment, w io.Writer) (err error) {
 
 func NewStorage() (s *Storage) {
 	s = &Storage{}
+	s.database = mgodb.DefaultDatabase
+	return
+}
+
+func (s *Storage) SetDatabase(db *mgodb.Database) {
+	s.database = db
 	return
 }
 
 func (s *Storage) Delete(attachment *tenpu.Attachment) (err error) {
-	mgodb.DatabaseDo(func(db *mgo.Database) {
+	s.database.DatabaseDo(func(db *mgo.Database) {
 		err = db.GridFS("fs").RemoveId(bson.ObjectIdHex(attachment.Id))
 	})
 	return
