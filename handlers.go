@@ -96,19 +96,19 @@ func deleteAttachment(id string, storage Storage) (att *Attachment, err error) {
 	return
 }
 
-func MakeTheUploader(ownerName string, category string, clear bool, storage Storage) http.HandlerFunc {
-	return makeUploader(ownerName, category, clear, storage)
+func MakeTheUploader(ownerName string, category string, clear bool, storage Storage, groupName string) http.HandlerFunc {
+	return makeUploader(ownerName, category, clear, storage, groupName)
 }
 
 func MakeUploader(ownerName string, category string, storage Storage) http.HandlerFunc {
-	return makeUploader(ownerName, category, false, storage)
+	return makeUploader(ownerName, category, false, storage, "")
 }
 
 func MakeClearUploader(ownerName string, category string, storage Storage) http.HandlerFunc {
-	return makeUploader(ownerName, category, true, storage)
+	return makeUploader(ownerName, category, true, storage, "")
 }
 
-func makeUploader(ownerName string, category string, clear bool, storage Storage) http.HandlerFunc {
+func makeUploader(ownerName string, category string, clear bool, storage Storage, groupName string) http.HandlerFunc {
 	if storage == nil {
 		panic("storage must be provided.")
 	}
@@ -121,6 +121,7 @@ func makeUploader(ownerName string, category string, clear bool, storage Storage
 		}
 
 		var ownerId string
+		var groupId string
 		var part *multipart.Part
 		var attachments []*Attachment
 
@@ -134,6 +135,9 @@ func makeUploader(ownerName string, category string, clear bool, storage Storage
 				if part.FormName() == ownerName {
 					ownerId = formValue(part)
 				}
+				if groupName != "" && part.FormName() == groupName {
+					groupId = formValue(part)
+				}
 				continue
 			}
 
@@ -144,6 +148,7 @@ func makeUploader(ownerName string, category string, clear bool, storage Storage
 			att := &Attachment{}
 			att.Category = category
 			att.OwnerId = ownerId
+			att.GroupId = groupId
 			err = storage.Put(part.FileName(), part.Header["Content-Type"][0], part, att)
 			if err != nil {
 				att.Error = err.Error()

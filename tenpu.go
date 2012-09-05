@@ -27,6 +27,7 @@ type Attachment struct {
 	MD5           string
 	ContentLength int64
 	Error         string
+	GroupId       string
 }
 
 func (att *Attachment) MakeId() interface{} {
@@ -101,6 +102,13 @@ func (dbc *DatabaseClient) AttachmentsByOwnerIds(ownerids []string) (r []*Attach
 func (dbc *DatabaseClient) AttachmentById(id string) (r *Attachment) {
 	dbc.Database.CollectionDo(CollectionName, func(c *mgo.Collection) {
 		c.Find(bson.M{"_id": id}).One(&r)
+	})
+	return
+}
+
+func (dbc *DatabaseClient) AttachmentsByGroupId(groupId string) (r *Attachment) {
+	dbc.Database.CollectionDo(CollectionName, func(c *mgo.Collection) {
+		c.Find(bson.M{"groupid": groupId}).All(&r)
 	})
 	return
 }
