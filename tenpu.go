@@ -6,6 +6,7 @@ import (
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"path"
+	"time"
 )
 
 var CollectionName = "attachments"
@@ -28,6 +29,7 @@ type Attachment struct {
 	ContentLength int64
 	Error         string
 	GroupId       string
+	UploadTime    time.Time
 }
 
 func (att *Attachment) MakeId() interface{} {

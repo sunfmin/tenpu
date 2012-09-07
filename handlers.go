@@ -9,6 +9,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	"mime/multipart"
 	"net/http"
+	"time"
 )
 
 type Result struct {
@@ -149,6 +150,7 @@ func makeUploader(ownerName string, category string, clear bool, storage Storage
 			att.Category = category
 			att.OwnerId = ownerId
 			att.GroupId = groupId
+			att.UploadTime = time.Now()
 			err = storage.Put(part.FileName(), part.Header["Content-Type"][0], part, att)
 			if err != nil {
 				att.Error = err.Error()
