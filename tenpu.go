@@ -30,6 +30,8 @@ type Attachment struct {
 	Error         string
 	GroupId       string
 	UploadTime    time.Time
+	Width         int
+	Height        int
 }
 
 func (att *Attachment) MakeId() interface{} {

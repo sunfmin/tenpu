@@ -3,6 +3,9 @@ package gridfs
 import (
 	"github.com/sunfmin/mgodb"
 	"github.com/sunfmin/tenpu"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -39,6 +42,19 @@ func (s *Storage) Put(filename string, contentType string, body io.Reader, attac
 	attachment.ContentType = f.ContentType()
 	attachment.Filename = f.Name()
 	attachment.MD5 = f.MD5()
+	if attachment.IsImage() {
+		s.database.DatabaseDo(func(db *mgo.Database) {
+			f, err := db.GridFS("fs").OpenId(bson.ObjectIdHex(attachment.Id))
+			if err == nil {
+				config, _, err := image.DecodeConfig(f)
+				f.Close()
+				if err == nil {
+					attachment.Width = config.Width
+					attachment.Height = config.Height
+				}
+			}
+		})
+	}
 	return
 }
 
