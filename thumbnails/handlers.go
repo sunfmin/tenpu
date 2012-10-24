@@ -13,6 +13,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	"log"
 	"net/http"
+	"sync"
 )
 
 var CollectionName = "thumbnails"
@@ -74,6 +75,11 @@ type Configuration struct {
 	ThumbnailSpecs     []*ThumbnailSpec
 }
 
+type lockedBuffer struct {
+	buf bytes.Buffer
+	m   sync.Mutex
+}
+
 func MakeLoader(config *Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get(config.IdentifierName)
@@ -112,30 +118,13 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 		config.Storage.Find(CollectionName, bson.M{"parentid": id, "name": thumbName}, &thumb)
 
 		if thumb == nil {
-			var buf bytes.Buffer
-			config.Storage.Copy(att, &buf)
-			thumbAtt := &tenpu.Attachment{}
-
-			body, width, height, err := resizeThumbnail(&buf, spec)
-
+			var err error
+			thumb, err = resizeAndStore(config, att, spec, thumbName, id)
 			if err != nil {
 				log.Printf("tenpu/thumbnails: %+v", err)
 				http.NotFound(w, r)
 				return
 			}
-
-			config.Storage.Put(att.Filename, att.ContentType, body, thumbAtt)
-
-			config.Storage.Database().Save(tenpu.CollectionName, thumbAtt)
-
-			thumb = &Thumbnail{
-				Name:     thumbName,
-				ParentId: id,
-				BodyId:   thumbAtt.Id,
-				Width:    int64(width),
-				Height:   int64(height),
-			}
-			config.Storage.Database().Save(CollectionName, thumb)
 		}
 
 		dbc := tenpu.DatabaseClient{Database: config.Storage.Database()}
@@ -158,6 +147,34 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 
 		return
 	}
+}
+
+func resizeAndStore(config *Configuration, att *tenpu.Attachment, spec *ThumbnailSpec, thumbName string, id string) (thumb *Thumbnail, err error) {
+	lb := lockedBuffer{}
+	defer lb.m.Lock()
+
+	config.Storage.Copy(att, &lb.buf)
+	thumbAtt := &tenpu.Attachment{}
+
+	body, width, height, err := resizeThumbnail(&lb.buf, spec)
+
+	if err != nil {
+		return
+	}
+
+	config.Storage.Put(att.Filename, att.ContentType, body, thumbAtt)
+
+	config.Storage.Database().Save(tenpu.CollectionName, thumbAtt)
+
+	thumb = &Thumbnail{
+		Name:     thumbName,
+		ParentId: id,
+		BodyId:   thumbAtt.Id,
+		Width:    int64(width),
+		Height:   int64(height),
+	}
+	config.Storage.Database().Save(CollectionName, thumb)
+	return
 }
 
 func resizeThumbnail(from *bytes.Buffer, spec *ThumbnailSpec) (to io.Reader, w int, h int, err error) {
