@@ -13,7 +13,6 @@ import (
 	"labix.org/v2/mgo/bson"
 	"log"
 	"net/http"
-	"sync"
 )
 
 var CollectionName = "thumbnails"
@@ -73,11 +72,6 @@ type Configuration struct {
 	ThumbnailParamName string
 	Storage            tenpu.Storage
 	ThumbnailSpecs     []*ThumbnailSpec
-}
-
-type lockedBuffer struct {
-	buf bytes.Buffer
-	m   sync.Mutex
 }
 
 func MakeLoader(config *Configuration) http.HandlerFunc {
@@ -150,13 +144,13 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 }
 
 func resizeAndStore(config *Configuration, att *tenpu.Attachment, spec *ThumbnailSpec, thumbName string, id string) (thumb *Thumbnail, err error) {
-	lb := lockedBuffer{}
-	defer lb.m.Lock()
 
-	config.Storage.Copy(att, &lb.buf)
+	var buf bytes.Buffer
+
+	config.Storage.Copy(att, &buf)
 	thumbAtt := &tenpu.Attachment{}
 
-	body, width, height, err := resizeThumbnail(&lb.buf, spec)
+	body, width, height, err := resizeThumbnail(&buf, spec)
 
 	if err != nil {
 		return
