@@ -10,9 +10,11 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"log"
 	"net/http"
+	"os"
 )
 
 var CollectionName = "thumbnails"
@@ -22,6 +24,8 @@ type ThumbnailSpec struct {
 	Width  int
 	Height int
 }
+
+var DefaultThumbnailBuf []byte
 
 func (ts *ThumbnailSpec) CalculateRect(rect image.Rectangle) (w int, h int) {
 	if ts.Width == 0 && ts.Height == 0 {
@@ -72,10 +76,25 @@ type Configuration struct {
 	ThumbnailParamName string
 	Storage            tenpu.Storage
 	ThumbnailSpecs     []*ThumbnailSpec
+	DefaultThumbnail   string
 }
 
 func MakeLoader(config *Configuration) http.HandlerFunc {
+	if DefaultThumbnailBuf == nil && len(config.DefaultThumbnail) > 0 {
+		fileHandler, err := os.Open(config.DefaultThumbnail)
+		if err != nil {
+			panic(err)
+		}
+
+		DefaultThumbnailBuf, err = ioutil.ReadAll(fileHandler)
+		if err != nil {
+			panic(err)
+		}
+		fileHandler.Close()
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
+
 		id := r.URL.Query().Get(config.IdentifierName)
 		if id == "" {
 			http.NotFound(w, r)
@@ -116,7 +135,11 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 			thumb, err = resizeAndStore(config, att, spec, thumbName, id)
 			if err != nil {
 				log.Printf("tenpu/thumbnails: %+v", err)
-				http.NotFound(w, r)
+			}
+
+			if thumb == nil {
+				w.Header().Set("Content-Type", "image/png")
+				io.Copy(w, bytes.NewBuffer(DefaultThumbnailBuf))
 				return
 			}
 		}
@@ -146,8 +169,11 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 func resizeAndStore(config *Configuration, att *tenpu.Attachment, spec *ThumbnailSpec, thumbName string, id string) (thumb *Thumbnail, err error) {
 
 	var buf bytes.Buffer
-
 	config.Storage.Copy(att, &buf)
+
+	if buf.Len() == 0 {
+		return
+	}
 	thumbAtt := &tenpu.Attachment{}
 
 	body, width, height, err := resizeThumbnail(&buf, spec)
