@@ -1,6 +1,7 @@
 package tenpu
 
 import (
+	"fmt"
 	"github.com/sunfmin/mgodb"
 	"io"
 	"labix.org/v2/mgo"
@@ -10,6 +11,22 @@ import (
 )
 
 var CollectionName = "attachments"
+
+// the time format used for HTTP headers 
+const HTTP_TIME_FORMAT = "Mon, 02 Jan 2006 15:04:05 GMT"
+
+func FormatHour(hours string) string {
+	d, _ := time.ParseDuration(hours + "h")
+	return time.Now().Add(d).Format(HTTP_TIME_FORMAT)
+}
+
+func FormatDays(day int) string {
+	return FormatHour(fmt.Sprintf("%d", day*24))
+}
+
+func FormatDayToSec(day int) string {
+	return fmt.Sprintf("%d", day*60*60*24)
+}
 
 type Storage interface {
 	Put(filename string, contentType string, body io.Reader, attachment *Attachment) (err error)

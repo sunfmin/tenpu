@@ -49,6 +49,8 @@ func MakeFileLoader(identifierName string, storage Storage) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", att.ContentType)
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", att.ContentLength))
+		w.Header().Set("Expires", FormatDays(30))
+		w.Header().Set("Cache-Control", "max-age="+FormatDayToSec(30))
 
 		err := storage.Copy(att, w)
 

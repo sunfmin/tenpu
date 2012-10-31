@@ -154,6 +154,8 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", thumbAttachment.ContentType)
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", thumbAttachment.ContentLength))
+		w.Header().Set("Expires", tenpu.FormatDays(30))
+		w.Header().Set("Cache-Control", "max-age="+tenpu.FormatDayToSec(30))
 
 		err := config.Storage.Copy(thumbAttachment, w)
 
