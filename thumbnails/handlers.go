@@ -209,8 +209,11 @@ func resizeThumbnail(from *bytes.Buffer, spec *ThumbnailSpec) (to io.Reader, w i
 
 	w, h = spec.CalculateRect(srcB)
 
-	rect := image.Rect(0, 0, srcB.Dx(), srcB.Dy())
+	if w >= srcB.Dx() || h >= srcB.Dy() {
+		w, h = srcB.Dx(), srcB.Dy()
+	}
 
+	rect := image.Rect(0, 0, srcB.Dx(), srcB.Dy())
 	dst := resize.Resize(src, rect, w, h)
 
 	var buf bytes.Buffer
