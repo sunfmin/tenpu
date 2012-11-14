@@ -63,10 +63,11 @@ func MakeFileLoader(identifierName string, storage Storage) http.HandlerFunc {
 	}
 }
 
-func MakeDeleter(AttachmentIdName string, storage Storage) http.HandlerFunc {
+func MakeDeleter(groupId string, storage Storage) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.FormValue("Id")
+		ownerId := r.FormValue("OwnerId")
 		var err error
 
 		if id == "" {
@@ -75,7 +76,7 @@ func MakeDeleter(AttachmentIdName string, storage Storage) http.HandlerFunc {
 			return
 		}
 
-		att, err := deleteAttachment(id, storage)
+		att, err := deleteAttachment(id, ownerId, groupId, storage)
 
 		if err != nil {
 			writeJson(w, err.Error(), []*Attachment{att})
@@ -87,14 +88,39 @@ func MakeDeleter(AttachmentIdName string, storage Storage) http.HandlerFunc {
 	}
 }
 
-func deleteAttachment(id string, storage Storage) (att *Attachment, err error) {
+func deleteAttachment(id string, ownerId string, groupId string, storage Storage) (att *Attachment, err error) {
 	dbc := DatabaseClient{Database: storage.Database()}
 	att = dbc.AttachmentById(id)
+	if len(att.OwnerId) > 1 {
+		groupids := []string{}
+		ownids := []string{}
+		for _, oid := range att.OwnerId {
+			if oid == ownerId {
+				continue
+			}
+			ownids = append(ownids, oid)
+		}
+		att.OwnerId = ownids
+
+		if groupId == "" {
+			groupids = att.GroupId
+		} else {
+			for _, gid := range att.GroupId {
+				if gid == groupId {
+					continue
+				}
+				groupids = append(groupids, gid)
+			}
+		}
+		att.GroupId = groupids
+
+		dbc.Database.Save(CollectionName, att)
+		return
+	}
 	err = storage.Delete(att)
 	if err != nil {
 		return
 	}
-
 	err = dbc.RemoveAttachmentById(id)
 	return
 }
@@ -150,8 +176,8 @@ func makeUploader(ownerName string, category string, clear bool, storage Storage
 			}
 			att := &Attachment{}
 			att.Category = category
-			att.OwnerId = ownerId
-			att.GroupId = groupId
+			att.OwnerId = []string{ownerId}
+			att.GroupId = []string{groupId}
 			att.UploadTime = time.Now()
 			err = storage.Put(part.FileName(), part.Header["Content-Type"][0], part, att)
 			if err != nil {
@@ -173,25 +199,25 @@ func makeUploader(ownerName string, category string, clear bool, storage Storage
 		}
 
 		if clear {
-			dbc := DatabaseClient{Database: storage.Database()}
-			ats := dbc.Attachments(ownerId)
-			for i := len(ats) - 1; i >= 0; i -= 1 {
-				found := false
-				for _, newAt := range attachments {
-					if ats[i].Id == newAt.Id {
-						found = true
-						break
-					}
-				}
-				if found {
-					continue
-				}
-				for _, newAt := range attachments {
-					if newAt.OwnerId == ats[i].OwnerId {
-						_, err = deleteAttachment(ats[i].Id, storage)
-					}
-				}
-			}
+			// dbc := DatabaseClient{Database: storage.Database()}
+			// ats := dbc.Attachments(ownerId)
+			// for i := len(ats) - 1; i >= 0; i -= 1 {
+			// 	found := false
+			// 	for _, newAt := range attachments {
+			// 		if ats[i].Id == newAt.Id {
+			// 			found = true
+			// 			break
+			// 		}
+			// 	}
+			// 	if found {
+			// 		continue
+			// 	}
+			// 	for _, newAt := range attachments {
+			// 		if newAt.OwnerId == ats[i].OwnerId {
+			// 			_, err = deleteAttachment(ats[i].Id, storage)
+			// 		}
+			// 	}
+			// }
 		}
 
 		dbc := DatabaseClient{Database: storage.Database()}

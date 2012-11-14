@@ -38,6 +38,21 @@ type Storage interface {
 
 type Attachment struct {
 	Id            string `bson:"_id"`
+	OwnerId       []string
+	Category      string
+	Filename      string
+	ContentType   string
+	MD5           string
+	ContentLength int64
+	Error         string
+	GroupId       []string
+	UploadTime    time.Time
+	Width         int
+	Height        int
+}
+
+type AttachmentForMigration struct {
+	Id            string `bson:"_id"`
 	OwnerId       string
 	Category      string
 	Filename      string
@@ -74,6 +89,17 @@ func (att *Attachment) Extname() (r string) {
 	return
 }
 
+func (att *Attachment) AddOwnerId(ownerid string, db *mgodb.Database) (err error) {
+	for _, id := range att.OwnerId {
+		if id == ownerid {
+			return
+		}
+	}
+	att.OwnerId = append(att.OwnerId, ownerid)
+	err = db.Save(CollectionName, att)
+	return
+}
+
 func Attachments(ownerid string) (r []*Attachment) {
 	mgodb.CollectionDo(CollectionName, func(c *mgo.Collection) {
 		c.Find(bson.M{"ownerid": ownerid}).All(&r)
@@ -90,6 +116,13 @@ func AttachmentsByOwnerIds(ownerids []string) (r []*Attachment) {
 
 func AttachmentById(id string) (r *Attachment) {
 	mgodb.CollectionDo(CollectionName, func(c *mgo.Collection) {
+		c.Find(bson.M{"_id": id}).One(&r)
+	})
+	return
+}
+
+func AttachmentById2(id string, db *mgodb.Database) (r *Attachment) {
+	db.CollectionDo(CollectionName, func(c *mgo.Collection) {
 		c.Find(bson.M{"_id": id}).One(&r)
 	})
 	return
@@ -123,6 +156,13 @@ func (dbc *DatabaseClient) AttachmentsByOwnerIds(ownerids []string) (r []*Attach
 func (dbc *DatabaseClient) AttachmentById(id string) (r *Attachment) {
 	dbc.Database.CollectionDo(CollectionName, func(c *mgo.Collection) {
 		c.Find(bson.M{"_id": id}).One(&r)
+	})
+	return
+}
+
+func (dbc *DatabaseClient) AttachmentByIds(ids []string) (r []*Attachment) {
+	dbc.Database.CollectionDo(CollectionName, func(c *mgo.Collection) {
+		c.Find(bson.M{"_id": bson.M{"$in": ids}}).All(&r)
 	})
 	return
 }
