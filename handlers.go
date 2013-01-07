@@ -63,6 +63,37 @@ func MakeFileLoader(identifierName string, storage Storage) http.HandlerFunc {
 	}
 }
 
+func MakeZipFileLoader(identifierName string, storage Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		eid := r.URL.Query().Get(identifierName)
+		if eid == "" {
+			http.NotFound(w, r)
+			return
+		}
+		dbc := DatabaseClient{storage.Database()}
+
+		atts := dbc.Attachments(eid)
+		// storage.Find(CollectionName, bson.M{"_id": id}, &att)
+		if atts == nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/zip")
+		// w.Header().Set("Content-Length", fmt.Sprintf("%d", att.ContentLength))
+		// w.Header().Set("Expires", FormatDays(30))
+		// w.Header().Set("Cache-Control", "max-age="+FormatDayToSec(30))
+
+		err := storage.Zip(eid, atts, w)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		return
+	}
+}
+
 func MakeDeleter(groupId string, storage Storage) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {

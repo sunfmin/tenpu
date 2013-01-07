@@ -1,6 +1,8 @@
 package gridfs
 
 import (
+	"archive/zip"
+	"bytes"
 	"github.com/sunfmin/mgodb"
 	"github.com/sunfmin/tenpu"
 	"image"
@@ -9,6 +11,7 @@ import (
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"log"
 )
 
 type Storage struct {
@@ -66,6 +69,38 @@ func (s *Storage) Copy(attachment *tenpu.Attachment, w io.Writer) (err error) {
 			io.Copy(w, f)
 		}
 	})
+	return
+}
+
+func (s *Storage) Zip(eid string, attachments []*tenpu.Attachment, w io.Writer) (err error) {
+	// Create a buffer to write our archive to.
+	buf := new(bytes.Buffer)
+
+	// Create a new zip archive.
+	zipfile := zip.NewWriter(buf)
+
+	// Add some files to the archive.
+	for _, att := range attachments {
+		f, _ := zipfile.Create(att.Filename)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		err = s.Copy(att, f)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+
+	// Make sure to check the error on Close.
+	err = zipfile.Close()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	_, err = buf.WriteTo(w)
 	return
 }
 
