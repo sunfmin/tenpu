@@ -33,6 +33,7 @@ type Storage interface {
 	Delete(attachment *Attachment) (err error)
 	Copy(attachment *Attachment, w io.Writer) (err error)
 	Find(collectionName string, query interface{}, result interface{}) (err error)
+	Zip(entryId string, attachments []*Attachment, w io.Writer) (err error)
 	Database() *mgodb.Database
 }
 
@@ -149,6 +150,13 @@ func (dbc *DatabaseClient) Attachments(ownerid string) (r []*Attachment) {
 func (dbc *DatabaseClient) AttachmentsByOwnerIds(ownerids []string) (r []*Attachment) {
 	dbc.Database.CollectionDo(CollectionName, func(c *mgo.Collection) {
 		c.Find(bson.M{"ownerid": bson.M{"$in": ownerids}}).All(&r)
+	})
+	return
+}
+
+func (dbc *DatabaseClient) AttachmentsCountByOwnerIds(ownerids []string) (r int) {
+	dbc.Database.CollectionDo(CollectionName, func(c *mgo.Collection) {
+		r, _ = c.Find(bson.M{"ownerid": bson.M{"$in": ownerids}}).Count()
 	})
 	return
 }
