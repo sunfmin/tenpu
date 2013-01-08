@@ -79,7 +79,7 @@ func MakeZipFileLoader(identifierName string, storage Storage) http.HandlerFunc 
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/zip")
+		// w.Header().Set("Content-Type", "application/zip")
 		// w.Header().Set("Content-Length", fmt.Sprintf("%d", att.ContentLength))
 		// w.Header().Set("Expires", FormatDays(30))
 		// w.Header().Set("Cache-Control", "max-age="+FormatDayToSec(30))

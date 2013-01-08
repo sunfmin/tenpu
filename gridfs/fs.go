@@ -2,7 +2,7 @@ package gridfs
 
 import (
 	"archive/zip"
-	"bytes"
+	// "bytes"
 	"github.com/sunfmin/mgodb"
 	"github.com/sunfmin/tenpu"
 	"image"
@@ -74,10 +74,10 @@ func (s *Storage) Copy(attachment *tenpu.Attachment, w io.Writer) (err error) {
 
 func (s *Storage) Zip(eid string, attachments []*tenpu.Attachment, w io.Writer) (err error) {
 	// Create a buffer to write our archive to.
-	buf := new(bytes.Buffer)
+	// buf := new(bytes.Buffer)
 
 	// Create a new zip archive.
-	zipfile := zip.NewWriter(buf)
+	zipfile := zip.NewWriter(w)
 
 	// Add some files to the archive.
 	for _, att := range attachments {
@@ -100,7 +100,7 @@ func (s *Storage) Zip(eid string, attachments []*tenpu.Attachment, w io.Writer) 
 		return
 	}
 
-	_, err = buf.WriteTo(w)
+	// _, err = buf.WriteTo(w)
 	return
 }
 
