@@ -33,7 +33,7 @@ type Storage interface {
 	Delete(attachment *Attachment) (err error)
 	Copy(attachment *Attachment, w io.Writer) (err error)
 	Find(collectionName string, query interface{}, result interface{}) (err error)
-	Zip(entryId string, attachments []*Attachment, w io.Writer) (err error)
+	Zip(attachments []*Attachment, w io.Writer) (err error)
 	Database() *mgodb.Database
 }
 

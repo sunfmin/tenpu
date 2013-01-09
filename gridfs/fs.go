@@ -72,7 +72,7 @@ func (s *Storage) Copy(attachment *tenpu.Attachment, w io.Writer) (err error) {
 	return
 }
 
-func (s *Storage) Zip(eid string, attachments []*tenpu.Attachment, w io.Writer) (err error) {
+func (s *Storage) Zip(attachments []*tenpu.Attachment, w io.Writer) (err error) {
 	// Create a buffer to write our archive to.
 	// buf := new(bytes.Buffer)
 
