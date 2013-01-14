@@ -33,7 +33,7 @@ func formValue(p *multipart.Part) string {
 	return b.String()
 }
 
-func MakeFileLoader(identifierName string, storage Storage) http.HandlerFunc {
+func MakeFileLoader(identifierName string, storage Storage, download bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get(identifierName)
 		if id == "" {
@@ -47,7 +47,11 @@ func MakeFileLoader(identifierName string, storage Storage) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", att.ContentType)
+		if download {
+			w.Header().Set("Content-Type", "application/octet-stream")
+		} else {
+			w.Header().Set("Content-Type", att.ContentType)
+		}
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", att.ContentLength))
 		w.Header().Set("Expires", FormatDays(30))
 		w.Header().Set("Cache-Control", "max-age="+FormatDayToSec(30))
