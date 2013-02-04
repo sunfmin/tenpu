@@ -48,10 +48,11 @@ func formValue(p *multipart.Part) string {
 	return b.String()
 }
 
-func MakeFileLoader(identifierName string, maker StorageMaker, download bool) http.HandlerFunc {
+func MakeFileLoader(viewer AttachmentViewer, maker StorageMaker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		storage, meta, err := maker.Make(r)
-		id := r.URL.Query().Get(identifierName)
+
+		id, download := viewer.ViewId(r)
 		if id == "" || err != nil {
 			http.NotFound(w, r)
 			return
@@ -111,13 +112,11 @@ func MakeZipFileLoader(loader AttachmentsLoader, maker StorageMaker) http.Handle
 	}
 }
 
-func MakeDeleter(groupId string, maker StorageMaker) http.HandlerFunc {
+func MakeDeleter(deleter AttachmentDeleter, maker StorageMaker) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		storage, meta, err := maker.Make(r)
-
 		id := r.FormValue("Id")
-		ownerId := r.FormValue("OwnerId")
 
 		if id == "" {
 			err = errors.New("id required.")
@@ -125,7 +124,7 @@ func MakeDeleter(groupId string, maker StorageMaker) http.HandlerFunc {
 			return
 		}
 
-		att, err := deleteAttachment(id, ownerId, groupId, storage, meta)
+		att, err := deleteAttachment(r, id, deleter, storage, meta)
 
 		if err != nil {
 			writeJson(w, err.Error(), []*Attachment{att})
@@ -137,33 +136,20 @@ func MakeDeleter(groupId string, maker StorageMaker) http.HandlerFunc {
 	}
 }
 
-func deleteAttachment(id string, ownerId string, groupId string, storage BlobStorage, meta MetaStorage) (att *Attachment, err error) {
+func deleteAttachment(r *http.Request, id string, deleter AttachmentDeleter, storage BlobStorage, meta MetaStorage) (att *Attachment, err error) {
 	att = meta.AttachmentById(id)
-	if len(att.OwnerId) > 1 {
-		groupids := []string{}
-		ownids := []string{}
-		for _, oid := range att.OwnerId {
-			if oid == ownerId {
-				continue
-			}
-			ownids = append(ownids, oid)
-		}
-		att.OwnerId = ownids
 
-		if groupId == "" {
-			groupids = att.GroupId
-		} else {
-			for _, gid := range att.GroupId {
-				if gid == groupId {
-					continue
-				}
-				groupids = append(groupids, gid)
-			}
-		}
-		att.GroupId = groupids
+	shouldUpdate, _, err := deleter.UpdateAttrsOrDelete(att, r)
+
+	if err != nil {
+		return
+	}
+
+	if shouldUpdate {
 		meta.Put(att)
 		return
 	}
+
 	err = storage.Delete(att)
 	if err != nil {
 		return
@@ -172,19 +158,7 @@ func deleteAttachment(id string, ownerId string, groupId string, storage BlobSto
 	return
 }
 
-func MakeTheUploader(ownerName string, category string, clear bool, maker StorageMaker, groupName string) http.HandlerFunc {
-	return makeUploader(ownerName, category, clear, maker, groupName)
-}
-
-func MakeUploader(ownerName string, category string, maker StorageMaker) http.HandlerFunc {
-	return makeUploader(ownerName, category, false, maker, "")
-}
-
-func MakeClearUploader(ownerName string, category string, maker StorageMaker) http.HandlerFunc {
-	return makeUploader(ownerName, category, true, maker, "")
-}
-
-func makeUploader(ownerName string, category string, clear bool, maker StorageMaker, groupName string) http.HandlerFunc {
+func MakeUploader(initializer AttachmentInitializer, maker StorageMaker) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		storage, meta, err1 := maker.Make(r)
@@ -198,10 +172,10 @@ func makeUploader(ownerName string, category string, clear bool, maker StorageMa
 			panic(err)
 		}
 
-		var ownerId string
-		var groupId string
 		var part *multipart.Part
 		var attachments []*Attachment
+
+		var metaInfo = make(map[string]string)
 
 		for {
 			part, err = mr.NextPart()
@@ -210,23 +184,17 @@ func makeUploader(ownerName string, category string, clear bool, maker StorageMa
 			}
 
 			if part.FileName() == "" {
-				if part.FormName() == ownerName {
-					ownerId = formValue(part)
-				}
-				if groupName != "" && part.FormName() == groupName {
-					groupId = formValue(part)
-				}
+				metaInfo[part.FormName()] = formValue(part)
 				continue
 			}
 
-			if ownerId == "" {
-				writeJson(w, fmt.Sprintf("ownerId required, Please put a hidden field in form called `%s`", ownerName), nil)
+			att := &Attachment{}
+			err = initializer.Fill(att, metaInfo)
+			if err != nil {
+				writeJson(w, err.Error(), nil)
 				return
 			}
-			att := &Attachment{}
-			att.Category = category
-			att.OwnerId = []string{ownerId}
-			att.GroupId = []string{groupId}
+
 			att.UploadTime = time.Now()
 			err = storage.Put(part.FileName(), part.Header["Content-Type"][0], part, att)
 			if err != nil {
@@ -247,7 +215,7 @@ func makeUploader(ownerName string, category string, clear bool, maker StorageMa
 			}
 		}
 
-		ats := meta.AttachmentsByOwnerIds([]string{ownerId})
+		ats := meta.AttachmentsByOwnerIds(attachments[0].OwnerId)
 		if err != nil {
 			writeJson(w, err.Error(), ats)
 			return

@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"errors"
 	"github.com/sunfmin/mgodb"
 	"github.com/sunfmin/tenpu"
 	"github.com/sunfmin/tenpu/gridfs"
@@ -18,12 +19,40 @@ var collectionName = "attachments"
 type maker struct {
 }
 
-func (m *maker) Make(r *http.Request) (storage tenpu.BlobStorage, meta tenpu.MetaStorage, err error) {
+func (m *maker) Make(r tenpu.RequestValue) (storage tenpu.BlobStorage, meta tenpu.MetaStorage, err error) {
 	db := mgodb.NewDatabase("localhost", "tenpu_test")
 	storage = gridfs.NewStorage(db)
 	meta = mgometa.NewStorage(db, collectionName)
 	return
 }
+
+type initilizer struct {
+}
+
+func (in *initilizer) Fill(att *tenpu.Attachment, metaInfo map[string]string) (err error) {
+
+	if metaInfo["OwnerId"] == "" {
+		err = errors.New("ownerId required")
+		return
+	}
+	att.OwnerId = []string{metaInfo["OwnerId"]}
+	return
+}
+
+type viewer struct {
+}
+
+func (v *viewer) ViewId(r tenpu.RequestValue) (id string, download bool) {
+	download = r.FormValue("download") == "1"
+	id = r.FormValue("id")
+	return
+}
+
+var (
+	v = &viewer{}
+	m = &maker{}
+	i = &initilizer{}
+)
 
 func TestUploader(t *testing.T) {
 	mgodb.Setup("localhost", "tenpu_test")
@@ -31,11 +60,11 @@ func TestUploader(t *testing.T) {
 	mgodb.CollectionDo(collectionName, func(c *mgo.Collection) {
 		c.DropCollection()
 	})
-	m := &maker{}
+
 	_, meta, _ := m.Make(nil)
 
-	http.HandleFunc("/postupload", tenpu.MakeUploader("OwnerId", "posts", m))
-	http.HandleFunc("/load", tenpu.MakeFileLoader("id", m, true))
+	http.HandleFunc("/postupload", tenpu.MakeUploader(i, m))
+	http.HandleFunc("/load", tenpu.MakeFileLoader(v, m))
 	ts := httptest.NewServer(http.DefaultServeMux)
 	defer ts.Close()
 
@@ -49,6 +78,7 @@ func TestUploader(t *testing.T) {
 	strb := string(b)
 	if !strings.Contains(strb, "4facead362911fa23c000001") {
 		t.Errorf("%+v", strb)
+		return
 	}
 
 	atts := meta.Attachments("4facead362911fa23c000001")
@@ -73,7 +103,7 @@ func TestUploadWithoutOwnerId(t *testing.T) {
 
 	m := &maker{}
 
-	http.HandleFunc("/errorpostupload", tenpu.MakeUploader("OwnerId", "posts", m))
+	http.HandleFunc("/errorpostupload", tenpu.MakeUploader(i, m))
 	ts := httptest.NewServer(http.DefaultServeMux)
 	defer ts.Close()
 

@@ -19,6 +19,15 @@ import (
 
 var thumbnailsCollectionName = "thumbnails"
 
+type ThumbnailStorageMaker struct {
+}
+
+func (m *ThumbnailStorageMaker) Make(r tenpu.RequestValue) (storage *thumbnails.Storage, err error) {
+	db := mgodb.NewDatabase("localhost", "tenpu_test")
+	storage = thumbnails.NewStorage(db, "thumbnails")
+	return
+}
+
 func TestThumbnailLoader(t *testing.T) {
 
 	mgodb.Setup("localhost", "tenpu_test")
@@ -27,12 +36,12 @@ func TestThumbnailLoader(t *testing.T) {
 	m := &maker{}
 	_, meta, _ := m.Make(nil)
 
-	http.HandleFunc("/thumbpostupload", tenpu.MakeUploader("OwnerId", "posts", m))
+	http.HandleFunc("/thumbpostupload", tenpu.MakeUploader(i, m))
 	http.HandleFunc("/thumbload", thumbnails.MakeLoader(&thumbnails.Configuration{
 		IdentifierName:     "id",
 		ThumbnailParamName: "thumb",
 		Maker:              m,
-		ThumbnailStorage:   thumbnails.NewStorage(mgodb.NewDatabase("localhost", "tenpu_test"), thumbnailsCollectionName),
+		ThumbnailStorageMaker: &ThumbnailStorageMaker{},
 		ThumbnailSpecs: []*thumbnails.ThumbnailSpec{
 			{Name: "icon", Width: 100},
 		},

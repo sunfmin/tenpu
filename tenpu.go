@@ -2,7 +2,6 @@ package tenpu
 
 import (
 	"io"
-	"net/http"
 	"path"
 	"time"
 )
@@ -26,12 +25,28 @@ type MetaStorage interface {
 	AttachmentsByGroupId(groupId string) (r *Attachment)
 }
 
+type RequestValue interface {
+	FormValue(key string) string
+}
+
 type StorageMaker interface {
-	Make(r *http.Request) (blog BlobStorage, meta MetaStorage, err error)
+	Make(r RequestValue) (blob BlobStorage, meta MetaStorage, err error)
 }
 
 type AttachmentsLoader interface {
-	LoadAttachments(r *http.Request) (atts []*Attachment, err error)
+	LoadAttachments(r RequestValue) (atts []*Attachment, err error)
+}
+
+type AttachmentViewer interface {
+	ViewId(r RequestValue) (id string, download bool)
+}
+
+type AttachmentDeleter interface {
+	UpdateAttrsOrDelete(att *Attachment, r RequestValue) (shouldUpdate bool, shouldDelete bool, err error)
+}
+
+type AttachmentInitializer interface {
+	Fill(att *Attachment, metaInfo map[string]string) (err error)
 }
 
 type Attachment struct {
