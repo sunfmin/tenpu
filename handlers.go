@@ -6,11 +6,26 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"labix.org/v2/mgo/bson"
 	"mime/multipart"
 	"net/http"
 	"time"
 )
+
+// the time format used for HTTP headers 
+const HTTP_TIME_FORMAT = "Mon, 02 Jan 2006 15:04:05 GMT"
+
+func formatHour(hours string) string {
+	d, _ := time.ParseDuration(hours + "h")
+	return time.Now().Add(d).Format(HTTP_TIME_FORMAT)
+}
+
+func formatDays(day int) string {
+	return formatHour(fmt.Sprintf("%d", day*24))
+}
+
+func formatDayToSec(day int) string {
+	return fmt.Sprintf("%d", day*60*60*24)
+}
 
 type Result struct {
 	Error       string
@@ -33,15 +48,16 @@ func formValue(p *multipart.Part) string {
 	return b.String()
 }
 
-func MakeFileLoader(identifierName string, storage Storage, download bool) http.HandlerFunc {
+func MakeFileLoader(identifierName string, maker StorageMaker, download bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		storage, meta, err := maker.Make(r)
 		id := r.URL.Query().Get(identifierName)
-		if id == "" {
+		if id == "" || err != nil {
 			http.NotFound(w, r)
 			return
 		}
-		var att *Attachment
-		storage.Find(CollectionName, bson.M{"_id": id}, &att)
+
+		att := meta.AttachmentById(id)
 		if att == nil {
 			http.NotFound(w, r)
 			return
@@ -53,10 +69,8 @@ func MakeFileLoader(identifierName string, storage Storage, download bool) http.
 			w.Header().Set("Content-Type", att.ContentType)
 		}
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", att.ContentLength))
-		w.Header().Set("Expires", FormatDays(30))
-		w.Header().Set("Cache-Control", "max-age="+FormatDayToSec(30))
-
-		err := storage.Copy(att, w)
+		SetCacheControl(w, 30)
+		err = storage.Copy(att, w)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -67,8 +81,16 @@ func MakeFileLoader(identifierName string, storage Storage, download bool) http.
 	}
 }
 
-func MakeZipFileLoader(atts []*Attachment, storage Storage) http.HandlerFunc {
+func SetCacheControl(w http.ResponseWriter, days int) {
+	w.Header().Set("Expires", formatDays(days))
+	w.Header().Set("Cache-Control", "max-age="+formatDayToSec(days))
+}
+
+func MakeZipFileLoader(loader AttachmentsLoader, maker StorageMaker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		storage, _, err := maker.Make(r)
+		var atts []*Attachment
+		atts, err = loader.LoadAttachments(r)
 
 		if atts == nil {
 			http.NotFound(w, r)
@@ -76,10 +98,10 @@ func MakeZipFileLoader(atts []*Attachment, storage Storage) http.HandlerFunc {
 		}
 		// w.Header().Set("Content-Type", "application/zip")
 		// w.Header().Set("Content-Length", fmt.Sprintf("%d", att.ContentLength))
-		// w.Header().Set("Expires", FormatDays(30))
-		// w.Header().Set("Cache-Control", "max-age="+FormatDayToSec(30))
+		// w.Header().Set("Expires", formatDays(30))
+		// w.Header().Set("Cache-Control", "max-age="+formatDayToSec(30))
 
-		err := storage.Zip(atts, w)
+		err = storage.Zip(atts, w)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -89,12 +111,13 @@ func MakeZipFileLoader(atts []*Attachment, storage Storage) http.HandlerFunc {
 	}
 }
 
-func MakeDeleter(groupId string, storage Storage) http.HandlerFunc {
+func MakeDeleter(groupId string, maker StorageMaker) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		storage, meta, err := maker.Make(r)
+
 		id := r.FormValue("Id")
 		ownerId := r.FormValue("OwnerId")
-		var err error
 
 		if id == "" {
 			err = errors.New("id required.")
@@ -102,7 +125,7 @@ func MakeDeleter(groupId string, storage Storage) http.HandlerFunc {
 			return
 		}
 
-		att, err := deleteAttachment(id, ownerId, groupId, storage)
+		att, err := deleteAttachment(id, ownerId, groupId, storage, meta)
 
 		if err != nil {
 			writeJson(w, err.Error(), []*Attachment{att})
@@ -114,9 +137,8 @@ func MakeDeleter(groupId string, storage Storage) http.HandlerFunc {
 	}
 }
 
-func deleteAttachment(id string, ownerId string, groupId string, storage Storage) (att *Attachment, err error) {
-	dbc := DatabaseClient{Database: storage.Database()}
-	att = dbc.AttachmentById(id)
+func deleteAttachment(id string, ownerId string, groupId string, storage BlobStorage, meta MetaStorage) (att *Attachment, err error) {
+	att = meta.AttachmentById(id)
 	if len(att.OwnerId) > 1 {
 		groupids := []string{}
 		ownids := []string{}
@@ -139,36 +161,37 @@ func deleteAttachment(id string, ownerId string, groupId string, storage Storage
 			}
 		}
 		att.GroupId = groupids
-
-		dbc.Database.Save(CollectionName, att)
+		meta.Put(att)
 		return
 	}
 	err = storage.Delete(att)
 	if err != nil {
 		return
 	}
-	err = dbc.RemoveAttachmentById(id)
+	meta.Remove(id)
 	return
 }
 
-func MakeTheUploader(ownerName string, category string, clear bool, storage Storage, groupName string) http.HandlerFunc {
-	return makeUploader(ownerName, category, clear, storage, groupName)
+func MakeTheUploader(ownerName string, category string, clear bool, maker StorageMaker, groupName string) http.HandlerFunc {
+	return makeUploader(ownerName, category, clear, maker, groupName)
 }
 
-func MakeUploader(ownerName string, category string, storage Storage) http.HandlerFunc {
-	return makeUploader(ownerName, category, false, storage, "")
+func MakeUploader(ownerName string, category string, maker StorageMaker) http.HandlerFunc {
+	return makeUploader(ownerName, category, false, maker, "")
 }
 
-func MakeClearUploader(ownerName string, category string, storage Storage) http.HandlerFunc {
-	return makeUploader(ownerName, category, true, storage, "")
+func MakeClearUploader(ownerName string, category string, maker StorageMaker) http.HandlerFunc {
+	return makeUploader(ownerName, category, true, maker, "")
 }
 
-func makeUploader(ownerName string, category string, clear bool, storage Storage, groupName string) http.HandlerFunc {
-	if storage == nil {
-		panic("storage must be provided.")
-	}
+func makeUploader(ownerName string, category string, clear bool, maker StorageMaker, groupName string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		storage, meta, err1 := maker.Make(r)
+		if err1 != nil {
+			panic(err1)
+		}
+
 		mr, err := r.MultipartReader()
 
 		if err != nil {
@@ -220,34 +243,11 @@ func makeUploader(ownerName string, category string, clear bool, storage Storage
 			if att.Error != "" {
 				err = errors.New("Some attachment has error")
 			} else {
-				storage.Database().Save(CollectionName, att)
+				err = meta.Put(att)
 			}
 		}
 
-		if clear {
-			// dbc := DatabaseClient{Database: storage.Database()}
-			// ats := dbc.Attachments(ownerId)
-			// for i := len(ats) - 1; i >= 0; i -= 1 {
-			// 	found := false
-			// 	for _, newAt := range attachments {
-			// 		if ats[i].Id == newAt.Id {
-			// 			found = true
-			// 			break
-			// 		}
-			// 	}
-			// 	if found {
-			// 		continue
-			// 	}
-			// 	for _, newAt := range attachments {
-			// 		if newAt.OwnerId == ats[i].OwnerId {
-			// 			_, err = deleteAttachment(ats[i].Id, storage)
-			// 		}
-			// 	}
-			// }
-		}
-
-		dbc := DatabaseClient{Database: storage.Database()}
-		ats := dbc.Attachments(ownerId)
+		ats := meta.AttachmentsByOwnerIds([]string{ownerId})
 		if err != nil {
 			writeJson(w, err.Error(), ats)
 			return

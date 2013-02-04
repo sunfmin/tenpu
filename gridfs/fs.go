@@ -18,13 +18,9 @@ type Storage struct {
 	database *mgodb.Database
 }
 
-func (s *Storage) Database() *mgodb.Database {
-	return s.database
-}
-
-func (s *Storage) Find(collectionName string, query interface{}, result interface{}) (err error) {
-	return s.database.FindOne(collectionName, query, result)
-}
+// func (s *Storage) Find(collectionName string, query interface{}, result interface{}) (err error) {
+// 	return s.database.FindOne(collectionName, query, result)
+// }
 
 func (s *Storage) Put(filename string, contentType string, body io.Reader, attachment *tenpu.Attachment) (err error) {
 	var f *mgo.GridFile
@@ -104,13 +100,11 @@ func (s *Storage) Zip(attachments []*tenpu.Attachment, w io.Writer) (err error) 
 	return
 }
 
-func NewStorage() (s *Storage) {
+func NewStorage(db *mgodb.Database) (s *Storage) {
 	s = &Storage{}
-	s.database = mgodb.DefaultDatabase
-	return
-}
-
-func (s *Storage) SetDatabase(db *mgodb.Database) {
+	if db == nil {
+		db = mgodb.DefaultDatabase
+	}
 	s.database = db
 	return
 }

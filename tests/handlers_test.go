@@ -4,6 +4,7 @@ import (
 	"github.com/sunfmin/mgodb"
 	"github.com/sunfmin/tenpu"
 	"github.com/sunfmin/tenpu/gridfs"
+	"github.com/sunfmin/tenpu/mgometa"
 	"io/ioutil"
 	"labix.org/v2/mgo"
 	"net/http"
@@ -12,72 +13,29 @@ import (
 	"testing"
 )
 
-func TestMakeClearUploader(t *testing.T) {
-	mgodb.Setup("localhost", "tenpu_test")
+var collectionName = "attachments"
+
+type maker struct {
+}
+
+func (m *maker) Make(r *http.Request) (storage tenpu.BlobStorage, meta tenpu.MetaStorage, err error) {
 	db := mgodb.NewDatabase("localhost", "tenpu_test")
-
-	mgodb.CollectionDo(tenpu.CollectionName, func(c *mgo.Collection) {
-		c.DropCollection()
-	})
-
-	st := gridfs.NewStorage()
-
-	http.HandleFunc("/upload_avatar", tenpu.MakeClearUploader("OwnerId", "posts", st))
-	http.HandleFunc("/load_avatar", tenpu.MakeFileLoader("id", st))
-	ts := httptest.NewServer(http.DefaultServeMux)
-	defer ts.Close()
-
-	//upload attachment repeatly
-	req, _ := http.NewRequest("POST", ts.URL+"/upload_avatar", strings.NewReader(singlePartContent))
-	req.Header.Set("Content-Type", "multipart/form-data; boundary=----WebKitFormBoundarySHaDkk90eMKgsVUj")
-	res, err := http.DefaultClient.Do(req)
-
-	req, _ = http.NewRequest("POST", ts.URL+"/upload_avatar", strings.NewReader(singlePartContent))
-	req.Header.Set("Content-Type", "multipart/form-data; boundary=----WebKitFormBoundarySHaDkk90eMKgsVUj")
-	res, err = http.DefaultClient.Do(req)
-
-	req, _ = http.NewRequest("POST", ts.URL+"/upload_avatar", strings.NewReader(singlePartContent))
-	req.Header.Set("Content-Type", "multipart/form-data; boundary=----WebKitFormBoundarySHaDkk90eMKgsVUj")
-	res, err = http.DefaultClient.Do(req)
-
-	if err != nil {
-		panic(err)
-	}
-	b, _ := ioutil.ReadAll(res.Body)
-	strb := string(b)
-	if !strings.Contains(strb, "4facead362911fa23c000002") {
-		t.Errorf("%+v", strb)
-	}
-
-	dbc := tenpu.DatabaseClient{Database: db}
-	atts := dbc.Attachments("4facead362911fa23c000002")
-	if len(atts) != 1 {
-		t.Errorf("%+v", atts[0])
-	}
-
-	res, err = http.Get(ts.URL + "/load_avatar?id=" + atts[0].Id)
-	if err != nil {
-		panic(err)
-	}
-
-	b, _ = ioutil.ReadAll(res.Body)
-	strb = string(b)
-	if strb != "the file content c\n" {
-		t.Errorf("%+v", strb)
-	}
+	storage = gridfs.NewStorage(db)
+	meta = mgometa.NewStorage(db, collectionName)
+	return
 }
 
 func TestUploader(t *testing.T) {
 	mgodb.Setup("localhost", "tenpu_test")
-	db := mgodb.NewDatabase("localhost", "tenpu_test")
-	mgodb.CollectionDo(tenpu.CollectionName, func(c *mgo.Collection) {
+
+	mgodb.CollectionDo(collectionName, func(c *mgo.Collection) {
 		c.DropCollection()
 	})
+	m := &maker{}
+	_, meta, _ := m.Make(nil)
 
-	st := gridfs.NewStorage()
-
-	http.HandleFunc("/postupload", tenpu.MakeUploader("OwnerId", "posts", st))
-	http.HandleFunc("/load", tenpu.MakeFileLoader("id", st))
+	http.HandleFunc("/postupload", tenpu.MakeUploader("OwnerId", "posts", m))
+	http.HandleFunc("/load", tenpu.MakeFileLoader("id", m, true))
 	ts := httptest.NewServer(http.DefaultServeMux)
 	defer ts.Close()
 
@@ -93,8 +51,7 @@ func TestUploader(t *testing.T) {
 		t.Errorf("%+v", strb)
 	}
 
-	dbc := tenpu.DatabaseClient{Database: db}
-	atts := dbc.Attachments("4facead362911fa23c000001")
+	atts := meta.Attachments("4facead362911fa23c000001")
 	if len(atts) != 2 {
 		t.Errorf("%+v", atts[0])
 	}
@@ -114,7 +71,9 @@ func TestUploader(t *testing.T) {
 func TestUploadWithoutOwnerId(t *testing.T) {
 	mgodb.Setup("localhost", "tenpu_test")
 
-	http.HandleFunc("/errorpostupload", tenpu.MakeUploader("OwnerId", "posts", gridfs.NewStorage()))
+	m := &maker{}
+
+	http.HandleFunc("/errorpostupload", tenpu.MakeUploader("OwnerId", "posts", m))
 	ts := httptest.NewServer(http.DefaultServeMux)
 	defer ts.Close()
 

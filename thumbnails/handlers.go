@@ -11,13 +11,10 @@ import (
 	"image/png"
 	"io"
 	"io/ioutil"
-	"labix.org/v2/mgo/bson"
 	"log"
 	"net/http"
 	"os"
 )
-
-var CollectionName = "thumbnails"
 
 type ThumbnailSpec struct {
 	Name   string
@@ -55,26 +52,11 @@ func (ts *ThumbnailSpec) CalculateRect(rect image.Rectangle) (w int, h int) {
 	return
 }
 
-type Thumbnail struct {
-	Id       bson.ObjectId `bson:"_id"`
-	ParentId string
-	BodyId   string
-	Name     string
-	Width    int64
-	Height   int64
-}
-
-func (tb *Thumbnail) MakeId() interface{} {
-	if tb.Id == "" {
-		tb.Id = bson.NewObjectId()
-	}
-	return tb.Id
-}
-
 type Configuration struct {
 	IdentifierName     string
 	ThumbnailParamName string
-	Storage            tenpu.Storage
+	Maker              tenpu.StorageMaker
+	ThumbnailStorage   *Storage
 	ThumbnailSpecs     []*ThumbnailSpec
 	DefaultThumbnail   string
 }
@@ -94,9 +76,10 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		storage, meta, err1 := config.Maker.Make(r)
 
 		id := r.URL.Query().Get(config.IdentifierName)
-		if id == "" {
+		if id == "" || err1 != nil {
 			http.NotFound(w, r)
 			return
 		}
@@ -120,19 +103,17 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 			return
 		}
 
-		var att *tenpu.Attachment
-		config.Storage.Database().FindOne(tenpu.CollectionName, bson.M{"_id": id}, &att)
+		var att = meta.AttachmentById(id)
 		if att == nil {
 			http.NotFound(w, r)
 			return
 		}
 
-		var thumb *Thumbnail
-		config.Storage.Find(CollectionName, bson.M{"parentid": id, "name": thumbName}, &thumb)
+		thumb := config.ThumbnailStorage.ThumbnailByName(id, thumbName)
 
 		if thumb == nil {
 			var err error
-			thumb, err = resizeAndStore(config, att, spec, thumbName, id)
+			thumb, err = resizeAndStore(storage, meta, config.ThumbnailStorage, att, spec, thumbName, id)
 			if err != nil {
 				log.Printf("tenpu/thumbnails: %+v", err)
 			}
@@ -144,8 +125,7 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 			}
 		}
 
-		dbc := tenpu.DatabaseClient{Database: config.Storage.Database()}
-		thumbAttachment := dbc.AttachmentById(thumb.BodyId)
+		thumbAttachment := meta.AttachmentById(thumb.BodyId)
 		if thumbAttachment == nil {
 			log.Printf("tenpu/thumbnails: Can't find body attachment by %+v", thumb)
 			http.NotFound(w, r)
@@ -154,10 +134,9 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", thumbAttachment.ContentType)
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", thumbAttachment.ContentLength))
-		w.Header().Set("Expires", tenpu.FormatDays(30))
-		w.Header().Set("Cache-Control", "max-age="+tenpu.FormatDayToSec(30))
+		tenpu.SetCacheControl(w, 30)
 
-		err := config.Storage.Copy(thumbAttachment, w)
+		err := storage.Copy(thumbAttachment, w)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -168,10 +147,10 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 	}
 }
 
-func resizeAndStore(config *Configuration, att *tenpu.Attachment, spec *ThumbnailSpec, thumbName string, id string) (thumb *Thumbnail, err error) {
+func resizeAndStore(storage tenpu.BlobStorage, meta tenpu.MetaStorage, thumbnailStorage *Storage, att *tenpu.Attachment, spec *ThumbnailSpec, thumbName string, id string) (thumb *Thumbnail, err error) {
 
 	var buf bytes.Buffer
-	config.Storage.Copy(att, &buf)
+	storage.Copy(att, &buf)
 
 	if buf.Len() == 0 {
 		return
@@ -184,9 +163,15 @@ func resizeAndStore(config *Configuration, att *tenpu.Attachment, spec *Thumbnai
 		return
 	}
 
-	config.Storage.Put(att.Filename, att.ContentType, body, thumbAtt)
+	err = storage.Put(att.Filename, att.ContentType, body, thumbAtt)
+	if err != nil {
+		return
+	}
 
-	config.Storage.Database().Save(tenpu.CollectionName, thumbAtt)
+	err = meta.Put(thumbAtt)
+	if err != nil {
+		return
+	}
 
 	thumb = &Thumbnail{
 		Name:     thumbName,
@@ -195,7 +180,7 @@ func resizeAndStore(config *Configuration, att *tenpu.Attachment, spec *Thumbnai
 		Width:    int64(width),
 		Height:   int64(height),
 	}
-	config.Storage.Database().Save(CollectionName, thumb)
+	err = thumbnailStorage.Put(thumb)
 	return
 }
 

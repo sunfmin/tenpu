@@ -5,7 +5,6 @@ import (
 	"github.com/sunfmin/integrationtest"
 	"github.com/sunfmin/mgodb"
 	"github.com/sunfmin/tenpu"
-	"github.com/sunfmin/tenpu/gridfs"
 	"github.com/sunfmin/tenpu/thumbnails"
 	"io"
 	"io/ioutil"
@@ -18,19 +17,22 @@ import (
 	"testing"
 )
 
+var thumbnailsCollectionName = "thumbnails"
+
 func TestThumbnailLoader(t *testing.T) {
 
 	mgodb.Setup("localhost", "tenpu_test")
-	db := mgodb.NewDatabase("localhost", "tenpu_test")
-	mgodb.DropCollections(tenpu.CollectionName, thumbnails.CollectionName)
+	mgodb.DropCollections(collectionName, thumbnailsCollectionName)
 
-	st := gridfs.NewStorage()
+	m := &maker{}
+	_, meta, _ := m.Make(nil)
 
-	http.HandleFunc("/thumbpostupload", tenpu.MakeUploader("OwnerId", "posts", st))
+	http.HandleFunc("/thumbpostupload", tenpu.MakeUploader("OwnerId", "posts", m))
 	http.HandleFunc("/thumbload", thumbnails.MakeLoader(&thumbnails.Configuration{
 		IdentifierName:     "id",
 		ThumbnailParamName: "thumb",
-		Storage:            gridfs.NewStorage(),
+		Maker:              m,
+		ThumbnailStorage:   thumbnails.NewStorage(mgodb.NewDatabase("localhost", "tenpu_test"), thumbnailsCollectionName),
 		ThumbnailSpecs: []*thumbnails.ThumbnailSpec{
 			{Name: "icon", Width: 100},
 		},
@@ -63,8 +65,7 @@ func TestThumbnailLoader(t *testing.T) {
 		t.Errorf("%+v", strb)
 	}
 
-	dbc := tenpu.DatabaseClient{Database: db}
-	atts := dbc.Attachments("my12345")
+	atts := meta.Attachments("my12345")
 	if len(atts) != 1 {
 		t.Errorf("%+v", atts)
 	}
@@ -86,7 +87,7 @@ func TestThumbnailLoader(t *testing.T) {
 	http.Get(ts.URL + fmt.Sprintf("/thumbload?id=%s&thumb=icon", atts[0].Id))
 
 	var thumbs []thumbnails.Thumbnail
-	mgodb.FindAll(thumbnails.CollectionName, bson.M{}, &thumbs)
+	mgodb.FindAll(thumbnailsCollectionName, bson.M{}, &thumbs)
 	if len(thumbs) != 1 {
 		t.Errorf("%+v", thumbs)
 	}
