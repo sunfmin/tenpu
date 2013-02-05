@@ -1,13 +1,16 @@
 package tests
 
 import (
+	"bytes"
 	"errors"
 	"github.com/sunfmin/mgodb"
 	"github.com/sunfmin/tenpu"
 	"github.com/sunfmin/tenpu/gridfs"
 	"github.com/sunfmin/tenpu/mgometa"
+	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,43 +19,82 @@ import (
 
 var collectionName = "attachments"
 
-type maker struct {
+type tenpuInput struct {
+	r           *http.Request
+	Id          string
+	FileName    string
+	ContentType string
+	Thumb       string
+	Download    bool
+	OwnerId     string
 }
 
-func (m *maker) Make(r tenpu.RequestValue) (storage tenpu.BlobStorage, meta tenpu.MetaStorage, err error) {
-	db := mgodb.NewDatabase("localhost", "tenpu_test")
-	storage = gridfs.NewStorage(db)
-	meta = mgometa.NewStorage(db, collectionName)
+func (d *tenpuInput) Get() (id string, filename string, contentType string, thumb string, download bool) {
+	if d.Id == "" {
+		d.Id = d.r.FormValue("id")
+	}
+	id = d.Id
+	filename = d.FileName
+	contentType = d.ContentType
+	if d.Thumb == "" {
+		d.Thumb = d.r.FormValue("thumb")
+	}
+	thumb = d.Thumb
+	download = d.Download
 	return
 }
 
-type initilizer struct {
+func (al *tenpuInput) LoadAttachments() (atts []*tenpu.Attachment, err error) {
+	return
 }
 
-func (in *initilizer) Fill(att *tenpu.Attachment, metaInfo map[string]string) (err error) {
+func formValue(p *multipart.Part) string {
+	var b bytes.Buffer
+	io.CopyN(&b, p, int64(1<<20)) // Copy max: 1 MiB
+	return b.String()
+}
 
-	if metaInfo["OwnerId"] == "" {
+func (d *tenpuInput) SetMultipart(part *multipart.Part) (isFile bool) {
+	if part.FileName() != "" {
+		d.FileName = part.FileName()
+		d.ContentType = part.Header["Content-Type"][0]
+		isFile = true
+		return
+	}
+
+	switch part.FormName() {
+	case "OwnerId":
+		d.OwnerId = formValue(part)
+	}
+	return
+}
+
+func (d *tenpuInput) SetAttrsForCreate(att *tenpu.Attachment) (err error) {
+	if d.OwnerId == "" {
 		err = errors.New("ownerId required")
 		return
 	}
-	att.OwnerId = []string{metaInfo["OwnerId"]}
+	att.OwnerId = []string{d.OwnerId}
 	return
 }
 
-type viewer struct {
-}
-
-func (v *viewer) ViewId(r tenpu.RequestValue) (id string, download bool) {
-	download = r.FormValue("download") == "1"
-	id = r.FormValue("id")
+func (d *tenpuInput) SetAttrsForDelete(att *tenpu.Attachment) (shouldUpdate bool, shouldDelete bool, err error) {
+	shouldDelete = true
 	return
 }
 
-var (
-	v = &viewer{}
-	m = &maker{}
-	i = &initilizer{}
-)
+type maker struct {
+}
+
+func (m *maker) Make(r *http.Request) (storage tenpu.BlobStorage, meta tenpu.MetaStorage, input tenpu.Input, err error) {
+	db := mgodb.NewDatabase("localhost", "tenpu_test")
+	storage = gridfs.NewStorage(db)
+	meta = mgometa.NewStorage(db, collectionName)
+	input = &tenpuInput{r: r}
+	return
+}
+
+var m = &maker{}
 
 func TestUploader(t *testing.T) {
 	mgodb.Setup("localhost", "tenpu_test")
@@ -61,10 +103,10 @@ func TestUploader(t *testing.T) {
 		c.DropCollection()
 	})
 
-	_, meta, _ := m.Make(nil)
+	_, meta, _, _ := m.Make(nil)
 
-	http.HandleFunc("/postupload", tenpu.MakeUploader(i, m))
-	http.HandleFunc("/load", tenpu.MakeFileLoader(v, m))
+	http.HandleFunc("/postupload", tenpu.MakeUploader(m))
+	http.HandleFunc("/load", tenpu.MakeFileLoader(m))
 	ts := httptest.NewServer(http.DefaultServeMux)
 	defer ts.Close()
 
@@ -103,7 +145,7 @@ func TestUploadWithoutOwnerId(t *testing.T) {
 
 	m := &maker{}
 
-	http.HandleFunc("/errorpostupload", tenpu.MakeUploader(i, m))
+	http.HandleFunc("/errorpostupload", tenpu.MakeUploader(m))
 	ts := httptest.NewServer(http.DefaultServeMux)
 	defer ts.Close()
 

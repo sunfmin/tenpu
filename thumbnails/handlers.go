@@ -53,8 +53,6 @@ func (ts *ThumbnailSpec) CalculateRect(rect image.Rectangle) (w int, h int) {
 }
 
 type Configuration struct {
-	IdentifierName        string
-	ThumbnailParamName    string
 	Maker                 tenpu.StorageMaker
 	ThumbnailStorageMaker ThumbnailStorageMaker
 	ThumbnailSpecs        []*ThumbnailSpec
@@ -77,13 +75,15 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		id := r.URL.Query().Get(config.IdentifierName)
-		if id == "" {
+		storage, meta, input, err2 := config.Maker.Make(r)
+		if err2 != nil {
+			log.Println("tenpu/thumbnails: load attachment storage error %+v", err2)
 			http.NotFound(w, r)
 			return
 		}
-		thumbName := r.URL.Query().Get(config.ThumbnailParamName)
-		if thumbName == "" {
+
+		id, _, _, thumbName, _ := input.Get()
+		if id == "" || thumbName == "" {
 			http.NotFound(w, r)
 			return
 		}
@@ -110,13 +110,6 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 		}
 
 		thumb := thumbnailStorage.ThumbnailByName(id, thumbName)
-
-		storage, meta, err2 := config.Maker.Make(r)
-		if err2 != nil {
-			log.Println("tenpu/thumbnails: load attachment storage error %+v", err2)
-			http.NotFound(w, r)
-			return
-		}
 
 		if thumb == nil {
 			var att = meta.AttachmentById(id)

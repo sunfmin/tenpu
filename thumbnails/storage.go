@@ -2,9 +2,9 @@ package thumbnails
 
 import (
 	"github.com/sunfmin/mgodb"
-	"github.com/sunfmin/tenpu"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"net/http"
 )
 
 type Storage struct {
@@ -28,7 +28,7 @@ func NewStorage(db *mgodb.Database, collectionName string) (s *Storage) {
 }
 
 type ThumbnailStorageMaker interface {
-	Make(r tenpu.RequestValue) (storage *Storage, err error)
+	Make(r *http.Request) (storage *Storage, err error)
 }
 
 type Thumbnail struct {
