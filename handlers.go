@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"time"
@@ -20,12 +21,14 @@ func MakeFileLoader(maker StorageMaker) http.HandlerFunc {
 
 		id, _, download := input.GetViewMeta()
 		if id == "" || err != nil {
+			log.Printf("tenpu: attachment id is blank [%s] or err: %v\n", id, err)
 			http.NotFound(w, r)
 			return
 		}
 
 		att := meta.AttachmentById(id)
 		if att == nil {
+			log.Printf("tenpu: attachment can not been fould by id: [%s]\n", id)
 			http.NotFound(w, r)
 			return
 		}
