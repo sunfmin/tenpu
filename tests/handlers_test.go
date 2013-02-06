@@ -20,7 +20,6 @@ import (
 var collectionName = "attachments"
 
 type tenpuInput struct {
-	r           *http.Request
 	Id          string
 	FileName    string
 	ContentType string
@@ -29,16 +28,14 @@ type tenpuInput struct {
 	OwnerId     string
 }
 
-func (d *tenpuInput) Get() (id string, filename string, contentType string, thumb string, download bool) {
-	if d.Id == "" {
-		d.Id = d.r.FormValue("id")
-	}
-	id = d.Id
+func (d *tenpuInput) GetFileMeta() (filename string, contentType string) {
 	filename = d.FileName
 	contentType = d.ContentType
-	if d.Thumb == "" {
-		d.Thumb = d.r.FormValue("thumb")
-	}
+	return
+}
+
+func (d *tenpuInput) GetViewMeta() (id string, thumb string, download bool) {
+	id = d.Id
 	thumb = d.Thumb
 	download = d.Download
 	return
@@ -86,11 +83,26 @@ func (d *tenpuInput) SetAttrsForDelete(att *tenpu.Attachment) (shouldUpdate bool
 type maker struct {
 }
 
-func (m *maker) Make(r *http.Request) (storage tenpu.BlobStorage, meta tenpu.MetaStorage, input tenpu.Input, err error) {
+func (m *maker) MakeForRead(r *http.Request) (storage tenpu.BlobStorage, meta tenpu.MetaStorage, input tenpu.Input, err error) {
+	var i *tenpuInput
+	storage, meta, i, err = m.make(r)
+	i.Id = r.FormValue("id")
+	i.OwnerId = r.FormValue("OwnerId")
+	i.Thumb = r.FormValue("thumb")
+	input = i
+	return
+}
+
+func (m *maker) MakeForUpload(r *http.Request) (storage tenpu.BlobStorage, meta tenpu.MetaStorage, input tenpu.UploadInput, err error) {
+	storage, meta, input, err = m.make(r)
+	return
+}
+
+func (m *maker) make(r *http.Request) (storage tenpu.BlobStorage, meta tenpu.MetaStorage, input *tenpuInput, err error) {
 	db := mgodb.NewDatabase("localhost", "tenpu_test")
 	storage = gridfs.NewStorage(db)
 	meta = mgometa.NewStorage(db, collectionName)
-	input = &tenpuInput{r: r}
+	input = &tenpuInput{}
 	return
 }
 
@@ -103,7 +115,7 @@ func TestUploader(t *testing.T) {
 		c.DropCollection()
 	})
 
-	_, meta, _, _ := m.Make(nil)
+	_, meta, _, _ := m.MakeForUpload(nil)
 
 	http.HandleFunc("/postupload", tenpu.MakeUploader(m))
 	http.HandleFunc("/load", tenpu.MakeFileLoader(m))

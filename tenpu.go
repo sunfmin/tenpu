@@ -28,8 +28,21 @@ type MetaStorage interface {
 	AttachmentsByGroupId(groupId string) (r *Attachment)
 }
 
+type Input interface {
+	GetViewMeta() (id string, thumb string, download bool)
+	SetAttrsForDelete(att *Attachment) (shouldUpdate bool, shouldDelete bool, err error)
+	LoadAttachments() (r []*Attachment, err error)
+}
+
+type UploadInput interface {
+	GetFileMeta() (filename string, contentType string)
+	SetMultipart(part *multipart.Part) (isFile bool)
+	SetAttrsForCreate(att *Attachment) (err error)
+}
+
 type StorageMaker interface {
-	Make(r *http.Request) (blob BlobStorage, meta MetaStorage, input Input, err error)
+	MakeForRead(r *http.Request) (blob BlobStorage, meta MetaStorage, input Input, err error)
+	MakeForUpload(r *http.Request) (blob BlobStorage, meta MetaStorage, input UploadInput, err error)
 }
 
 type Attachment struct {
@@ -70,17 +83,9 @@ func (att *Attachment) Extname() (r string) {
 	return
 }
 
-type Input interface {
-	Get() (id string, filename string, contentType string, thumb string, download bool)
-	SetAttrsForDelete(att *Attachment) (shouldUpdate bool, shouldDelete bool, err error)
-	SetAttrsForCreate(att *Attachment) (err error)
-	SetMultipart(part *multipart.Part) (isFile bool)
-	LoadAttachments() (r []*Attachment, err error)
-}
-
 func DeleteAttachment(input Input, blob BlobStorage, meta MetaStorage) (r []*Attachment, err error) {
 
-	id, _, _, _, _ := input.Get()
+	id, _, _ := input.GetViewMeta()
 
 	if id == "" {
 		err = errors.New("id required.")
@@ -116,7 +121,7 @@ func DeleteAttachment(input Input, blob BlobStorage, meta MetaStorage) (r []*Att
 
 }
 
-func CreateAttachment(input Input, blob BlobStorage, meta MetaStorage, body io.Reader) (att *Attachment, err error) {
+func CreateAttachment(input UploadInput, blob BlobStorage, meta MetaStorage, body io.Reader) (att *Attachment, err error) {
 	att = &Attachment{}
 	err = input.SetAttrsForCreate(att)
 
@@ -124,7 +129,7 @@ func CreateAttachment(input Input, blob BlobStorage, meta MetaStorage, body io.R
 		return
 	}
 
-	_, filename, contentType, _, _ := input.Get()
+	filename, contentType := input.GetFileMeta()
 
 	att.UploadTime = time.Now()
 

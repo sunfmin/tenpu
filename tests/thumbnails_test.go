@@ -34,7 +34,7 @@ func TestThumbnailLoader(t *testing.T) {
 	mgodb.DropCollections(collectionName, thumbnailsCollectionName)
 
 	m := &maker{}
-	_, meta, _, _ := m.Make(nil)
+	_, meta, _, _ := m.MakeForUpload(nil)
 
 	http.HandleFunc("/thumbpostupload", tenpu.MakeUploader(m))
 	http.HandleFunc("/thumbload", thumbnails.MakeLoader(&thumbnails.Configuration{

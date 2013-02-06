@@ -16,9 +16,9 @@ type Result struct {
 
 func MakeFileLoader(maker StorageMaker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		storage, meta, input, err := maker.Make(r)
+		storage, meta, input, err := maker.MakeForRead(r)
 
-		id, _, _, _, download := input.Get()
+		id, _, download := input.GetViewMeta()
 		if id == "" || err != nil {
 			http.NotFound(w, r)
 			return
@@ -50,7 +50,7 @@ func MakeFileLoader(maker StorageMaker) http.HandlerFunc {
 
 func MakeZipFileLoader(maker StorageMaker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		storage, _, input, err := maker.Make(r)
+		storage, _, input, err := maker.MakeForRead(r)
 		var atts []*Attachment
 		atts, err = input.LoadAttachments()
 
@@ -76,7 +76,7 @@ func MakeZipFileLoader(maker StorageMaker) http.HandlerFunc {
 func MakeDeleter(maker StorageMaker) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		blob, meta, input, err := maker.Make(r)
+		blob, meta, input, err := maker.MakeForRead(r)
 
 		atts, err := DeleteAttachment(input, blob, meta)
 
@@ -93,7 +93,7 @@ func MakeDeleter(maker StorageMaker) http.HandlerFunc {
 func MakeUploader(maker StorageMaker) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		blob, meta, input, err1 := maker.Make(r)
+		blob, meta, input, err1 := maker.MakeForUpload(r)
 		if err1 != nil {
 			writeJson(w, err1.Error(), nil)
 			return
