@@ -96,6 +96,8 @@ func MakeDeleter(maker StorageMaker) http.HandlerFunc {
 func MakeUploader(maker StorageMaker) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		blob, meta, input, err1 := maker.MakeForUpload(r)
 		if err1 != nil {
 			writeJson(w, err1.Error(), nil)
