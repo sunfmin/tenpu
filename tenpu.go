@@ -3,6 +3,7 @@ package tenpu
 import (
 	"errors"
 	"io"
+	"labix.org/v2/mgo"
 	"mime/multipart"
 	"net/http"
 	"path"
@@ -108,7 +109,7 @@ func DeleteAttachment(input Input, blob BlobStorage, meta MetaStorage) (r []*Att
 	}
 
 	err = blob.Delete(att)
-	if err != nil {
+	if err != nil && err != mgo.ErrNotFound {
 		return
 	}
 
