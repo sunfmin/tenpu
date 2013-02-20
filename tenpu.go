@@ -29,6 +29,7 @@ type MetaStorage interface {
 }
 
 type Input interface {
+	GetFileMeta() (filename string, contentType string)
 	GetViewMeta() (id string, thumb string, download bool)
 	SetAttrsForDelete(att *Attachment) (shouldUpdate bool, shouldDelete bool, err error)
 	LoadAttachments() (r []*Attachment, err error)

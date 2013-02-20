@@ -34,10 +34,10 @@ func MakeFileLoader(maker StorageMaker) http.HandlerFunc {
 		}
 
 		if download {
-			w.Header().Set("Content-Type", "application/octet-stream")
-		} else {
-			w.Header().Set("Content-Type", att.ContentType)
+			filename, _ := input.GetFileMeta()
+			w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 		}
+		w.Header().Set("Content-Type", att.ContentType)
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", att.ContentLength))
 		SetCacheControl(w, 30)
 		err = storage.Copy(att, w)
