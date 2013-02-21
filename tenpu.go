@@ -11,9 +11,11 @@ import (
 )
 
 type BlobStorage interface {
+	// Get(attachment *Attachment) (r io.Reader, err error)
 	Put(filename string, contentType string, body io.Reader, attachment *Attachment) (err error)
-	Delete(attachment *Attachment) (err error)
+	Delete(attachmentId string) (err error)
 	Copy(attachment *Attachment, w io.Writer) (err error)
+	CopyToStorage(attachment *Attachment, toBlob BlobStorage) (err error)
 	// Find(collectionName string, query interface{}, result interface{}) (err error)
 	Zip(attachments []*Attachment, w io.Writer) (err error)
 }
@@ -85,7 +87,7 @@ func (att *Attachment) Extname() (r string) {
 	return
 }
 
-func DeleteAttachment(input Input, blob BlobStorage, meta MetaStorage) (r []*Attachment, err error) {
+func DeleteAttachment(input Input, blob BlobStorage, meta MetaStorage) (att *Attachment, deleted bool, err error) {
 
 	id, _, _ := input.GetViewMeta()
 
@@ -94,7 +96,7 @@ func DeleteAttachment(input Input, blob BlobStorage, meta MetaStorage) (r []*Att
 		return
 	}
 
-	att := meta.AttachmentById(id)
+	att = meta.AttachmentById(id)
 
 	shouldUpdate, _, err := input.SetAttrsForDelete(att)
 
@@ -104,11 +106,10 @@ func DeleteAttachment(input Input, blob BlobStorage, meta MetaStorage) (r []*Att
 
 	if shouldUpdate {
 		err = meta.Put(att)
-		r = []*Attachment{att}
 		return
 	}
 
-	err = blob.Delete(att)
+	err = blob.Delete(id)
 	if err != nil && err != mgo.ErrNotFound {
 		return
 	}
@@ -118,7 +119,8 @@ func DeleteAttachment(input Input, blob BlobStorage, meta MetaStorage) (r []*Att
 		return
 	}
 
-	r = []*Attachment{att}
+	deleted = true
+
 	return
 
 }
@@ -145,5 +147,17 @@ func CreateAttachment(input UploadInput, blob BlobStorage, meta MetaStorage, bod
 		return
 	}
 
+	return
+}
+
+func CopyAttachment(fromBlob BlobStorage, toBlob BlobStorage, toMeta MetaStorage, att *Attachment) (err error) {
+
+	if err = fromBlob.CopyToStorage(att, toBlob); err != nil && err != mgo.ErrNotFound {
+		return
+	}
+
+	if err = toMeta.Put(att); err != nil {
+		return
+	}
 	return
 }

@@ -2,6 +2,7 @@ package thumbnails
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/sunfmin/resize"
 	"github.com/sunfmin/tenpu"
@@ -219,4 +220,45 @@ func resizeThumbnail(from *bytes.Buffer, spec *ThumbnailSpec) (to io.Reader, w i
 
 	to = &buf
 	return
+}
+
+func MakeDeleter(config *Configuration) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		blob, meta, input, _ := config.Maker.MakeForRead(r)
+
+		att, deleted, err := tenpu.DeleteAttachment(input, blob, meta)
+
+		if err != nil {
+			writeJson(w, err.Error(), []*tenpu.Attachment{att})
+			return
+		}
+
+		if deleted {
+			thumbnailStorage, _ := config.ThumbnailStorageMaker.Make(r)
+			if err = thumbnailStorage.DeleteThumbnails(att.Id, blob, meta); err != nil {
+				writeJson(w, err.Error(), []*tenpu.Attachment{att})
+				return
+			}
+		}
+
+		writeJson(w, "", []*tenpu.Attachment{att})
+		return
+	}
+}
+
+type Result struct {
+	Error       string
+	Attachments []*tenpu.Attachment
+}
+
+func writeJson(w http.ResponseWriter, err string, attachments []*tenpu.Attachment) {
+	r := &Result{
+		Error:       err,
+		Attachments: attachments,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	b, _ := json.Marshal(r)
+	w.Write(b)
 }

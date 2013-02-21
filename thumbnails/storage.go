@@ -2,8 +2,10 @@ package thumbnails
 
 import (
 	"github.com/sunfmin/mgodb"
+	"github.com/sunfmin/tenpu"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"log"
 	"net/http"
 )
 
@@ -32,12 +34,14 @@ type ThumbnailStorageMaker interface {
 }
 
 type Thumbnail struct {
-	Id       bson.ObjectId `bson:"_id"`
+	Id bson.ObjectId `bson:"_id"`
+	// ParentId : original file's attachment id
 	ParentId string
-	BodyId   string
-	Name     string
-	Width    int64
-	Height   int64
+	// BodyId : thumbnail file's attachment id
+	BodyId string
+	Name   string
+	Width  int64
+	Height int64
 }
 
 func (tb *Thumbnail) MakeId() interface{} {
@@ -54,7 +58,45 @@ func (s *Storage) ThumbnailByName(parentId string, name string) (r *Thumbnail) {
 	return
 }
 
+func (s *Storage) ThumbnailByParentId(parentId string) (r []*Thumbnail) {
+	s.database.CollectionDo(s.collectionName, func(c *mgo.Collection) {
+		c.Find(bson.M{"parentid": parentId}).All(&r)
+	})
+	return
+}
+
 func (s *Storage) Put(att *Thumbnail) (err error) {
 	err = s.database.Save(s.collectionName, att)
+	return
+}
+
+func (s *Storage) RemoveAll(parentId string) (err error) {
+	s.database.CollectionDo(s.collectionName, func(c *mgo.Collection) {
+		_, err = c.RemoveAll(bson.M{"parentid": parentId})
+	})
+	return
+}
+
+func (s *Storage) DeleteThumbnails(parentAttId string, blob tenpu.BlobStorage, meta tenpu.MetaStorage) (err error) {
+	thumbs := s.ThumbnailByParentId(parentAttId)
+	log.Println("Thumbnail num:", len(thumbs))
+	var thumbAttIds []string
+	for _, thumb := range thumbs {
+		thumbAttIds = append(thumbAttIds, thumb.BodyId)
+	}
+
+	for _, thumbAttId := range thumbAttIds {
+
+		err = blob.Delete(thumbAttId)
+		if err != nil && err != mgo.ErrNotFound {
+			return
+		}
+
+		err = meta.Remove(thumbAttId)
+		if err != nil {
+			return
+		}
+	}
+	err = s.RemoveAll(parentAttId)
 	return
 }

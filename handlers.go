@@ -81,14 +81,18 @@ func MakeDeleter(maker StorageMaker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		blob, meta, input, err := maker.MakeForRead(r)
 
-		atts, err := DeleteAttachment(input, blob, meta)
+		att, deleted, err := DeleteAttachment(input, blob, meta)
 
 		if err != nil {
-			writeJson(w, err.Error(), atts)
+			writeJson(w, err.Error(), []*Attachment{att})
 			return
 		}
 
-		writeJson(w, "", atts)
+		if deleted {
+
+		}
+
+		writeJson(w, "", []*Attachment{att})
 		return
 	}
 }
@@ -97,7 +101,7 @@ func MakeUploader(maker StorageMaker) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		// w.Header().Set("Access-Control-Allow-Origin", "*")
 		blob, meta, input, err1 := maker.MakeForUpload(r)
 		if err1 != nil {
 			writeJson(w, err1.Error(), nil)
