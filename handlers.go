@@ -34,10 +34,10 @@ func MakeFileLoader(maker StorageMaker) http.HandlerFunc {
 		}
 
 		if download {
-			w.Header().Set("Content-Type", "application/octet-stream")
-		} else {
-			w.Header().Set("Content-Type", att.ContentType)
+			filename, _ := input.GetFileMeta()
+			w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 		}
+		w.Header().Set("Content-Type", att.ContentType)
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", att.ContentLength))
 		SetCacheControl(w, 30)
 		err = storage.Copy(att, w)
@@ -81,14 +81,18 @@ func MakeDeleter(maker StorageMaker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		blob, meta, input, err := maker.MakeForRead(r)
 
-		atts, err := DeleteAttachment(input, blob, meta)
+		att, deleted, err := DeleteAttachment(input, blob, meta)
 
 		if err != nil {
-			writeJson(w, err.Error(), atts)
+			writeJson(w, err.Error(), []*Attachment{att})
 			return
 		}
 
-		writeJson(w, "", atts)
+		if deleted {
+
+		}
+
+		writeJson(w, "", []*Attachment{att})
 		return
 	}
 }
@@ -96,6 +100,8 @@ func MakeDeleter(maker StorageMaker) http.HandlerFunc {
 func MakeUploader(maker StorageMaker) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		// w.Header().Set("Access-Control-Allow-Origin", "*")
 		blob, meta, input, err1 := maker.MakeForUpload(r)
 		if err1 != nil {
 			writeJson(w, err1.Error(), nil)

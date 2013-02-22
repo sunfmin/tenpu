@@ -24,7 +24,6 @@ type Storage struct {
 
 func (s *Storage) Put(filename string, contentType string, body io.Reader, attachment *tenpu.Attachment) (err error) {
 	var f *mgo.GridFile
-
 	s.database.DatabaseDo(func(db *mgo.Database) {
 		f, err = db.GridFS("fs").Create(filename)
 		defer f.Close()
@@ -36,26 +35,54 @@ func (s *Storage) Put(filename string, contentType string, body io.Reader, attac
 
 	})
 
-	attachment.Id = f.Id().(bson.ObjectId).Hex()
-	attachment.ContentLength = f.Size()
-	attachment.ContentType = f.ContentType()
-	attachment.Filename = f.Name()
-	attachment.MD5 = f.MD5()
-	if attachment.IsImage() {
-		s.database.DatabaseDo(func(db *mgo.Database) {
-			f, err := db.GridFS("fs").OpenId(bson.ObjectIdHex(attachment.Id))
-			if err == nil {
-				config, _, err := image.DecodeConfig(f)
-				f.Close()
+	if attachment.Id == "" {
+		attachment.Id = f.Id().(bson.ObjectId).Hex()
+		attachment.ContentLength = f.Size()
+		attachment.ContentType = f.ContentType()
+		attachment.Filename = f.Name()
+		attachment.MD5 = f.MD5()
+		if attachment.IsImage() {
+			s.database.DatabaseDo(func(db *mgo.Database) {
+				f, err := db.GridFS("fs").OpenId(bson.ObjectIdHex(attachment.Id))
 				if err == nil {
-					attachment.Width = config.Width
-					attachment.Height = config.Height
+					config, _, err := image.DecodeConfig(f)
+					f.Close()
+					if err == nil {
+						attachment.Width = config.Width
+						attachment.Height = config.Height
+					}
 				}
-			}
-		})
+			})
+		}
 	}
+
 	return
 }
+
+func (s *Storage) CopyToStorage(attachment *tenpu.Attachment, toBlob tenpu.BlobStorage) (err error) {
+
+	session := s.database.GetOrDialSession().Copy()
+	defer session.Close()
+	db := session.DB(s.database.DatabaseName)
+	reader, err := db.GridFS("fs").OpenId(bson.ObjectIdHex(attachment.Id))
+	if err == nil {
+		defer reader.Close()
+	} else {
+		return
+	}
+	err = toBlob.Put(attachment.Filename, attachment.ContentType, reader, attachment)
+
+	return
+}
+
+// Have Session problem
+// func (s *Storage) Get(attachment *tenpu.Attachment) (r io.Reader, err error) {
+
+// 	s.database.DatabaseDo(func(db *mgo.Database) {
+// 		r, err = db.GridFS("fs").OpenId(bson.ObjectIdHex(attachment.Id))
+// 	})
+// 	return
+// }
 
 func (s *Storage) Copy(attachment *tenpu.Attachment, w io.Writer) (err error) {
 	s.database.DatabaseDo(func(db *mgo.Database) {
@@ -109,9 +136,9 @@ func NewStorage(db *mgodb.Database) (s *Storage) {
 	return
 }
 
-func (s *Storage) Delete(attachment *tenpu.Attachment) (err error) {
+func (s *Storage) Delete(attachmentId string) (err error) {
 	s.database.DatabaseDo(func(db *mgo.Database) {
-		err = db.GridFS("fs").RemoveId(bson.ObjectIdHex(attachment.Id))
+		err = db.GridFS("fs").RemoveId(bson.ObjectIdHex(attachmentId))
 	})
 	return
 }
