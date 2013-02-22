@@ -68,7 +68,7 @@ func (att *Attachment) IsImage() (r bool) {
 	switch att.ContentType {
 	default:
 		r = false
-	case "image/png", "image/jpeg", "image/gif":
+	case "image/png", "image/jpeg", "image/jpg", "image/gif":
 		r = true
 	}
 	return

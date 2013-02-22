@@ -77,7 +77,7 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 
 		storage, meta, input, err2 := config.Maker.MakeForRead(r)
 		if err2 != nil {
-			log.Println("tenpu/thumbnails: load attachment storage error %+v", err2)
+			log.Printf("tenpu/thumbnails: load attachment storage error %+v\n", err2)
 			http.NotFound(w, r)
 			return
 		}
