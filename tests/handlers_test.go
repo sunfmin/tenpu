@@ -28,7 +28,7 @@ type tenpuInput struct {
 	OwnerId     string
 }
 
-func (d *tenpuInput) GetFileMeta() (filename string, contentType string) {
+func (d *tenpuInput) GetFileMeta() (filename string, contentType string, contentId string) {
 	filename = d.FileName
 	contentType = d.ContentType
 	return

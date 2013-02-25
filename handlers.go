@@ -34,7 +34,7 @@ func MakeFileLoader(maker StorageMaker) http.HandlerFunc {
 		}
 
 		if download {
-			filename, _ := input.GetFileMeta()
+			filename, _, _ := input.GetFileMeta()
 			w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 		}
 		w.Header().Set("Content-Type", att.ContentType)

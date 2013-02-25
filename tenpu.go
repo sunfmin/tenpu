@@ -32,14 +32,14 @@ type MetaStorage interface {
 }
 
 type Input interface {
-	GetFileMeta() (filename string, contentType string)
+	GetFileMeta() (filename string, contentType string, contentId string)
 	GetViewMeta() (id string, thumb string, download bool)
 	SetAttrsForDelete(att *Attachment) (shouldUpdate bool, shouldDelete bool, err error)
 	LoadAttachments() (r []*Attachment, err error)
 }
 
 type UploadInput interface {
-	GetFileMeta() (filename string, contentType string)
+	GetFileMeta() (filename string, contentType string, contentId string)
 	SetMultipart(part *multipart.Part) (isFile bool)
 	SetAttrsForCreate(att *Attachment) (err error)
 }
@@ -55,6 +55,7 @@ type Attachment struct {
 	Category      string
 	Filename      string
 	ContentType   string
+	ContentId     string
 	MD5           string
 	ContentLength int64
 	Error         string
@@ -133,9 +134,10 @@ func CreateAttachment(input UploadInput, blob BlobStorage, meta MetaStorage, bod
 		return
 	}
 
-	filename, contentType := input.GetFileMeta()
+	filename, contentType, contentId := input.GetFileMeta()
 
 	att.UploadTime = time.Now()
+	att.ContentId = contentId
 
 	err = blob.Put(filename, contentType, body, att)
 	if err != nil {
