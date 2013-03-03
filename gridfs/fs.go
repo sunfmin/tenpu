@@ -30,6 +30,9 @@ func (s *Storage) Put(filename string, contentType string, body io.Reader, attac
 		if err != nil {
 			panic(err)
 		}
+		if attachment.Id != "" {
+			f.SetId(bson.ObjectIdHex(attachment.Id))
+		}
 		f.SetContentType(contentType)
 		io.Copy(f, body)
 
@@ -60,7 +63,6 @@ func (s *Storage) Put(filename string, contentType string, body io.Reader, attac
 }
 
 func (s *Storage) CopyToStorage(attachment *tenpu.Attachment, toBlob tenpu.BlobStorage) (err error) {
-
 	session := s.database.GetOrDialSession().Copy()
 	defer session.Close()
 	db := session.DB(s.database.DatabaseName)
@@ -68,6 +70,7 @@ func (s *Storage) CopyToStorage(attachment *tenpu.Attachment, toBlob tenpu.BlobS
 	if err == nil {
 		defer reader.Close()
 	} else {
+		log.Println("open file error: ", attachment.Id, attachment.Filename)
 		return
 	}
 	err = toBlob.Put(attachment.Filename, attachment.ContentType, reader, attachment)
@@ -90,6 +93,8 @@ func (s *Storage) Copy(attachment *tenpu.Attachment, w io.Writer) (err error) {
 		if err == nil {
 			defer f.Close()
 			io.Copy(w, f)
+		} else {
+			log.Println("open file error: ", attachment.Id, attachment.Filename)
 		}
 	})
 	return
