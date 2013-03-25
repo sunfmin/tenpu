@@ -107,8 +107,23 @@ func (s *Storage) Zip(attachments []*tenpu.Attachment, w io.Writer) (err error) 
 	// Create a new zip archive.
 	zipfile := zip.NewWriter(w)
 
+	attNameMap := make(map[string]bool)
+	attMD5Map := make(map[string]bool)
+
 	// Add some files to the archive.
 	for _, att := range attachments {
+
+		if _, ok := attNameMap[att.Filename]; ok {
+			if _, ok := attMD5Map[att.MD5+att.Filename]; ok {
+				continue
+			} else {
+				att.Filename = att.MD5 + "_" + att.Filename
+				attMD5Map[att.MD5+att.Filename] = true
+			}
+		} else {
+			attNameMap[att.Filename] = true
+			attMD5Map[att.MD5+att.Filename] = true
+		}
 		f, _ := zipfile.Create(att.Filename)
 		if err != nil {
 			log.Println(err)
