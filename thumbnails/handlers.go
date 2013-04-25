@@ -23,7 +23,10 @@ type ThumbnailSpec struct {
 	Height int
 }
 
-var DefaultThumbnailBuf []byte
+var DefaultThumbnailBuf_JPG []byte
+var DefaultThumbnailBuf_PNG []byte
+var DefaultThumbnailBuf_GIF []byte
+var DefaultThumbnailBuf_IMG []byte
 
 func (ts *ThumbnailSpec) CalculateRect(rect image.Rectangle) (w int, h int) {
 	if ts.Width == 0 && ts.Height == 0 {
@@ -57,22 +60,46 @@ type Configuration struct {
 	Maker                 tenpu.StorageMaker
 	ThumbnailStorageMaker ThumbnailStorageMaker
 	ThumbnailSpecs        []*ThumbnailSpec
-	DefaultThumbnail      string
+	FileDir               string
+}
+
+func loadFile(fileName string) (buf []byte, err error) {
+
+	fileHandler, err := os.Open(fileName)
+	if err != nil {
+		return
+	}
+
+	buf, err = ioutil.ReadAll(fileHandler)
+	if err != nil {
+		return
+	}
+	fileHandler.Close()
+	return
+}
+func init() {
+	if DefaultThumbnailBuf_JPG == nil {
+		var err error
+		DefaultThumbnailBuf_JPG, err = loadFile("public/img/filetypes/jpg.png")
+		if err != nil {
+			panic(err)
+		}
+		DefaultThumbnailBuf_PNG, err = loadFile("public/img/filetypes/png.png")
+		if err != nil {
+			panic(err)
+		}
+		DefaultThumbnailBuf_GIF, err = loadFile("public/img/filetypes/gif.png")
+		if err != nil {
+			panic(err)
+		}
+		DefaultThumbnailBuf_IMG, err = loadFile("public/img/filetypes/img.png")
+		if err != nil {
+			panic(err)
+		}
+	}
 }
 
 func MakeLoader(config *Configuration) http.HandlerFunc {
-	if DefaultThumbnailBuf == nil && len(config.DefaultThumbnail) > 0 {
-		fileHandler, err := os.Open(config.DefaultThumbnail)
-		if err != nil {
-			panic(err)
-		}
-
-		DefaultThumbnailBuf, err = ioutil.ReadAll(fileHandler)
-		if err != nil {
-			panic(err)
-		}
-		fileHandler.Close()
-	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -127,7 +154,18 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 
 			if thumb == nil {
 				w.Header().Set("Content-Type", "image/png")
-				io.Copy(w, bytes.NewBuffer(DefaultThumbnailBuf))
+
+				switch att.Extname() {
+				case "jpg", "jpeg":
+					io.Copy(w, bytes.NewBuffer(DefaultThumbnailBuf_JPG))
+				case "png":
+					io.Copy(w, bytes.NewBuffer(DefaultThumbnailBuf_PNG))
+				case "gif":
+					io.Copy(w, bytes.NewBuffer(DefaultThumbnailBuf_GIF))
+				default:
+					io.Copy(w, bytes.NewBuffer(DefaultThumbnailBuf_IMG))
+				}
+
 				return
 			}
 		}
