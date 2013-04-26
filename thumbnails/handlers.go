@@ -60,7 +60,7 @@ type Configuration struct {
 	Maker                 tenpu.StorageMaker
 	ThumbnailStorageMaker ThumbnailStorageMaker
 	ThumbnailSpecs        []*ThumbnailSpec
-	FileDir               string
+	DefaultThumbnails     []string
 }
 
 func loadFile(fileName string) (buf []byte, err error) {
@@ -77,30 +77,31 @@ func loadFile(fileName string) (buf []byte, err error) {
 	fileHandler.Close()
 	return
 }
-func init() {
-	if DefaultThumbnailBuf_JPG == nil {
-		var err error
-		DefaultThumbnailBuf_JPG, err = loadFile("public/img/filetypes/jpg.png")
-		if err != nil {
-			panic(err)
-		}
-		DefaultThumbnailBuf_PNG, err = loadFile("public/img/filetypes/png.png")
-		if err != nil {
-			panic(err)
-		}
-		DefaultThumbnailBuf_GIF, err = loadFile("public/img/filetypes/gif.png")
-		if err != nil {
-			panic(err)
-		}
-		DefaultThumbnailBuf_IMG, err = loadFile("public/img/filetypes/img.png")
-		if err != nil {
-			panic(err)
-		}
-	}
-}
 
 func MakeLoader(config *Configuration) http.HandlerFunc {
+	if DefaultThumbnailBuf_JPG == nil {
+		if len(config.DefaultThumbnails) != 4 {
+			log.Println("Thumbnail Loader config 'DefaultThumbnails' error")
+		}
+		var err error
 
+		DefaultThumbnailBuf_JPG, err = loadFile(config.DefaultThumbnails[0])
+		if err != nil {
+			log.Println("Load File  'DefaultThumbnail_JPG' error")
+		}
+		DefaultThumbnailBuf_PNG, err = loadFile(config.DefaultThumbnails[1])
+		if err != nil {
+			log.Println("Load File  'DefaultThumbnail_PNG' error")
+		}
+		DefaultThumbnailBuf_GIF, err = loadFile(config.DefaultThumbnails[2])
+		if err != nil {
+			log.Println("Load File  'DefaultThumbnail_GIF' error")
+		}
+		DefaultThumbnailBuf_IMG, err = loadFile(config.DefaultThumbnails[3])
+		if err != nil {
+			log.Println("Load File  'DefaultThumbnail_IMG' error")
+		}
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		storage, meta, input, err2 := config.Maker.MakeForRead(r)
