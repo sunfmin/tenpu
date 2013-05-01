@@ -151,6 +151,7 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 			thumb, err = resizeAndStore(storage, meta, thumbnailStorage, att, spec, thumbName, id)
 			if err != nil {
 				log.Printf("tenpu/thumbnails: %+v", err)
+				w.Header().Set("X-HTTP-Thumbnail-Error", err.Error())
 			}
 
 			if thumb == nil {
