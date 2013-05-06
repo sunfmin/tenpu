@@ -34,9 +34,14 @@ func (s *Storage) Put(filename string, contentType string, body io.Reader, attac
 			f.SetId(bson.ObjectIdHex(attachment.Id))
 		}
 		f.SetContentType(contentType)
-		io.Copy(f, body)
-
+		_, err = io.Copy(f, body)
 	})
+
+	if err == io.ErrUnexpectedEOF {
+		attId := f.Id().(bson.ObjectId)
+		s.Delete(attId.Hex())
+		return
+	}
 
 	if attachment.Id == "" {
 		attachment.Id = f.Id().(bson.ObjectId).Hex()
