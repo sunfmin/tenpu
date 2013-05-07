@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/disintegration/imaging"
 	"github.com/sunfmin/resize"
 	"github.com/sunfmin/tenpu"
 	"image"
@@ -18,9 +19,10 @@ import (
 )
 
 type ThumbnailSpec struct {
-	Name   string
-	Width  int
-	Height int
+	Name         string
+	Width        int
+	Height       int
+	CropToSquare bool
 }
 
 var DefaultThumbnailBuf_JPG []byte
@@ -239,14 +241,37 @@ func resizeThumbnail(from *bytes.Buffer, spec *ThumbnailSpec) (to io.Reader, w i
 	}
 	srcB := src.Bounds()
 
-	w, h = spec.CalculateRect(srcB)
+	var dst image.Image
+	if spec.CropToSquare && srcB.Dx() != srcB.Dy() {
+		var rect image.Rectangle
+		if srcB.Dx() > srcB.Dy() {
+			x1 := (srcB.Dx() - srcB.Dy()) / 2
+			x2 := srcB.Dx() - x1
+			rect = image.Rect(x1, 0, x2, srcB.Dy())
 
-	if w >= srcB.Dx() || h >= srcB.Dy() {
-		w, h = srcB.Dx(), srcB.Dy()
+		} else {
+			rect = image.Rect(0, 0, srcB.Dx(), srcB.Dx())
+		}
+		w = spec.Height
+		if (spec.Height > spec.Width && spec.Width != 0) || spec.Height == 0 {
+			w = spec.Width
+		}
+		h = w
+
+		cropedImg := imaging.Crop(src, rect)
+		rect = cropedImg.Bounds()
+		dst = resize.Resize(cropedImg, rect, w, h)
+
+	} else {
+		w, h = spec.CalculateRect(srcB)
+
+		if w >= srcB.Dx() || h >= srcB.Dy() {
+			w, h = srcB.Dx(), srcB.Dy()
+		}
+
+		rect := image.Rect(0, 0, srcB.Dx(), srcB.Dy())
+		dst = resize.Resize(src, rect, w, h)
 	}
-
-	rect := image.Rect(0, 0, srcB.Dx(), srcB.Dy())
-	dst := resize.Resize(src, rect, w, h)
 
 	var buf bytes.Buffer
 	switch name {
