@@ -30,9 +30,14 @@ var DefaultThumbnailBuf_PNG []byte
 var DefaultThumbnailBuf_GIF []byte
 var DefaultThumbnailBuf_IMG []byte
 
-func (ts *ThumbnailSpec) CalculateRect(rect image.Rectangle) (w int, h int) {
+func (ts *ThumbnailSpec) CalculateRect(rect image.Rectangle, cropToSquare bool) (w int, h int) {
 	if ts.Width == 0 && ts.Height == 0 {
 		panic("tenpu/thumbnails: must provide width, or height for thumbnails.")
+	}
+	if cropToSquare && ts.Width == ts.Height {
+		w = ts.Width
+		h = ts.Width
+		return
 	}
 
 	if ts.Height == 0 {
@@ -263,7 +268,7 @@ func resizeThumbnail(from *bytes.Buffer, spec *ThumbnailSpec) (to io.Reader, w i
 		dst = resize.Resize(cropedImg, rect, w, h)
 
 	} else {
-		w, h = spec.CalculateRect(srcB)
+		w, h = spec.CalculateRect(srcB, spec.CropToSquare)
 
 		if w >= srcB.Dx() || h >= srcB.Dy() {
 			w, h = srcB.Dx(), srcB.Dy()
