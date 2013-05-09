@@ -75,7 +75,7 @@ func (s *Storage) CopyToStorage(attachment *tenpu.Attachment, toBlob tenpu.BlobS
 	if err == nil {
 		defer reader.Close()
 	} else {
-		log.Println("open file error: ", attachment.Id, attachment.Filename)
+		// log.Println("open file error: ", attachment.Id, attachment.Filename)
 		return
 	}
 	err = toBlob.Put(attachment.Filename, attachment.ContentType, reader, attachment)
@@ -99,7 +99,7 @@ func (s *Storage) Copy(attachment *tenpu.Attachment, w io.Writer) (err error) {
 			defer f.Close()
 			io.Copy(w, f)
 		} else {
-			log.Println("open file error: ", attachment.Id, attachment.Filename)
+			// log.Println("open file error: ", attachment.Id, attachment.Filename)
 		}
 	})
 	return
