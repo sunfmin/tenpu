@@ -169,7 +169,8 @@ func writeJson(w http.ResponseWriter, err string, attachments []*Attachment) {
 		Error:       err,
 		Attachments: attachments,
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/json; charset=utf-8")
+	// w.Header().Set("Content-Type", "application/json")
 	b, _ := json.Marshal(r)
 	w.Write(b)
 }
