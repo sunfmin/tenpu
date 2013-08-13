@@ -3,10 +3,12 @@ package gridfs
 import (
 	"archive/zip"
 	// "bytes"
+	_ "code.google.com/p/go.image/bmp"
 	"github.com/sunfmin/mgodb"
 	"github.com/sunfmin/tenpu"
 	"image"
 	_ "image/jpeg"
+	_ "image/png"
 	_ "image/png"
 	"io"
 	"labix.org/v2/mgo"

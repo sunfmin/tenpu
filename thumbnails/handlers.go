@@ -2,6 +2,7 @@ package thumbnails
 
 import (
 	"bytes"
+	_ "code.google.com/p/go.image/bmp"
 	"encoding/json"
 	"fmt"
 	"github.com/disintegration/imaging"
@@ -285,6 +286,8 @@ func resizeThumbnail(from *bytes.Buffer, spec *ThumbnailSpec) (to io.Reader, w i
 	case "png":
 		png.Encode(&buf, dst)
 	case "gif":
+		jpeg.Encode(&buf, dst, &jpeg.Options{95})
+	case "bmp":
 		jpeg.Encode(&buf, dst, &jpeg.Options{95})
 	}
 
