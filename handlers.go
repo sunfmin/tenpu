@@ -7,6 +7,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -37,7 +38,12 @@ func MakeFileLoader(maker StorageMaker) http.HandlerFunc {
 			filename, _, _ := input.GetFileMeta()
 			w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 		}
+
 		w.Header().Set("Content-Type", att.ContentType)
+		// fix pdf Content-Type
+		if strings.ToLower(att.Extname()) == "pdf" {
+			w.Header().Set("Content-Type", "application/pdf")
+		}
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", att.ContentLength))
 		SetCacheControl(w, 30)
 		err = storage.Copy(att, w)
@@ -175,7 +181,7 @@ func writeJson(w http.ResponseWriter, err string, attachments []*Attachment) {
 	w.Write(b)
 }
 
-// the time format used for HTTP headers 
+// the time format used for HTTP headers
 const httpTimeFormat = "Mon, 02 Jan 2006 15:04:05 GMT"
 
 func formatHour(hours string) string {
