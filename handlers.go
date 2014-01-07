@@ -34,6 +34,7 @@ func MakeFileLoader(maker StorageMaker) http.HandlerFunc {
 			return
 		}
 
+		log.Printf("Load file id:%s, name:%s, size:%.2f M", id, att.Filename, float32(att.ContentLength)/1024/1024)
 		if download {
 			filename, _, _ := input.GetFileMeta()
 			w.Header().Set("Content-Disposition", "attachment; filename="+filename)
@@ -97,7 +98,6 @@ func MakeDeleter(maker StorageMaker) http.HandlerFunc {
 		if deleted {
 
 		}
-
 		writeJson(w, "", []*Attachment{att})
 		return
 	}
@@ -139,6 +139,7 @@ func MakeUploader(maker StorageMaker) http.HandlerFunc {
 			if err != nil {
 				att.Error = err.Error()
 			}
+			log.Printf("Upload file id:%s, name:%s, size:%.2f M", att.Id, att.Filename, float32(att.ContentLength)/1024/1024)
 			attachments = append(attachments, att)
 		}
 

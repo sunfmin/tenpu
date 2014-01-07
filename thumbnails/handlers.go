@@ -186,7 +186,7 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
-
+		log.Printf("Load file id:%s, name:%s, size:%.2f M", id, thumbAttachment.Filename, float32(thumbAttachment.ContentLength)/1024/1024)
 		w.Header().Set("Content-Type", thumbAttachment.ContentType)
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", thumbAttachment.ContentLength))
 		tenpu.SetCacheControl(w, 30)
@@ -302,7 +302,6 @@ func MakeDeleter(config *Configuration) http.HandlerFunc {
 		blob, meta, input, _ := config.Maker.MakeForRead(r)
 
 		att, deleted, err := tenpu.DeleteAttachment(input, blob, meta)
-
 		if err != nil {
 			writeJson(w, err.Error(), []*tenpu.Attachment{att})
 			return

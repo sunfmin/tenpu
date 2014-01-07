@@ -5,7 +5,7 @@ import (
 	"github.com/sunfmin/tenpu"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
-	"log"
+	// "log"
 	"net/http"
 )
 
@@ -79,7 +79,7 @@ func (s *Storage) RemoveAll(parentId string) (err error) {
 
 func (s *Storage) DeleteThumbnails(parentAttId string, blob tenpu.BlobStorage, meta tenpu.MetaStorage) (err error) {
 	thumbs := s.ThumbnailByParentId(parentAttId)
-	log.Println("Thumbnail num:", len(thumbs))
+	// log.Println("Delete thumbnail num:", len(thumbs))
 	var thumbAttIds []string
 	for _, thumb := range thumbs {
 		thumbAttIds = append(thumbAttIds, thumb.BodyId)

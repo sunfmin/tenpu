@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"labix.org/v2/mgo"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"path"
@@ -119,6 +120,7 @@ func DeleteAttachment(input Input, blob BlobStorage, meta MetaStorage) (att *Att
 	if err != nil {
 		return
 	}
+	log.Printf("Delete file id:%s, name:%s, size:%.2f M", att.Id, att.Filename, float32(att.ContentLength)/1024/1024)
 
 	deleted = true
 
