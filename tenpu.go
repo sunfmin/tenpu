@@ -3,12 +3,13 @@ package tenpu
 import (
 	"errors"
 	"io"
-	"labix.org/v2/mgo"
 	"log"
 	"mime/multipart"
 	"net/http"
 	"path"
 	"time"
+
+	"labix.org/v2/mgo"
 )
 
 type BlobStorage interface {
@@ -99,6 +100,10 @@ func DeleteAttachment(input Input, blob BlobStorage, meta MetaStorage) (att *Att
 	}
 
 	att = meta.AttachmentById(id)
+	if att == nil {
+		err = errors.New("Attachment not found ,id: " + id)
+		return
+	}
 
 	shouldUpdate, _, err := input.SetAttrsForDelete(att)
 
