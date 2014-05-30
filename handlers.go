@@ -2,7 +2,6 @@ package tenpu
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"mime/multipart"
@@ -148,20 +147,7 @@ func MakeUploader(maker StorageMaker) http.HandlerFunc {
 			return
 		}
 
-		for _, att := range attachments {
-			if att.Error != "" {
-				err = errors.New("Some attachment has error")
-				break
-			}
-		}
-
-		if err != nil {
-			writeJson(w, err.Error(), attachments)
-			return
-		}
-
-		ats := meta.AttachmentsByOwnerIds(attachments[0].OwnerId)
-		writeJson(w, "", ats)
+		writeJson(w, "", attachments)
 		return
 	}
 }
