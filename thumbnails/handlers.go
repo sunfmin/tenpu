@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/disintegration/imaging"
 	"github.com/sunfmin/resize"
-	"github.com/sunfmin/tenpu"
+	"github.com/theplant/tenpu"
 	"image"
 	_ "image/gif"
 	"image/jpeg"

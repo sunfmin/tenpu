@@ -5,7 +5,7 @@ import (
 	// "bytes"
 	_ "code.google.com/p/go.image/bmp"
 	"github.com/sunfmin/mgodb"
-	"github.com/sunfmin/tenpu"
+	"github.com/theplant/tenpu"
 	mgo "gopkg.in/mgo.v2"
 	"image"
 	_ "image/jpeg"
