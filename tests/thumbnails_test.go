@@ -3,7 +3,7 @@ package tests
 import (
 	"fmt"
 	"github.com/sunfmin/integrationtest"
-	"github.com/sunfmin/mgodb"
+	"github.com/theplant/mgodb"
 	"github.com/theplant/tenpu"
 	"github.com/theplant/tenpu/thumbnails"
 	"io"

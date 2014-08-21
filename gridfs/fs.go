@@ -4,7 +4,7 @@ import (
 	"archive/zip"
 	// "bytes"
 	_ "code.google.com/p/go.image/bmp"
-	"github.com/sunfmin/mgodb"
+	"github.com/theplant/mgodb"
 	"github.com/theplant/tenpu"
 	mgo "gopkg.in/mgo.v2"
 	"image"

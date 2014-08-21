@@ -3,7 +3,7 @@ package tests
 import (
 	"bytes"
 	"errors"
-	"github.com/sunfmin/mgodb"
+	"github.com/theplant/mgodb"
 	"github.com/theplant/tenpu"
 	"github.com/theplant/tenpu/gridfs"
 	"github.com/theplant/tenpu/mgometa"

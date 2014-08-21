@@ -1,7 +1,7 @@
 package thumbnails
 
 import (
-	"github.com/sunfmin/mgodb"
+	"github.com/theplant/mgodb"
 	"github.com/theplant/tenpu"
 	mgo "gopkg.in/mgo.v2"
 	"labix.org/v2/mgo/bson"
