@@ -6,12 +6,12 @@ import (
 	_ "code.google.com/p/go.image/bmp"
 	"github.com/sunfmin/mgodb"
 	"github.com/sunfmin/tenpu"
+	mgo "gopkg.in/mgo.v2"
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
 	_ "image/png"
 	"io"
-	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"log"
 )

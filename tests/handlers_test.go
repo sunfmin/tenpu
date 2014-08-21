@@ -9,7 +9,7 @@ import (
 	"github.com/sunfmin/tenpu/mgometa"
 	"io"
 	"io/ioutil"
-	"labix.org/v2/mgo"
+	mgo "gopkg.in/mgo.v2"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"

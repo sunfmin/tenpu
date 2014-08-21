@@ -9,7 +9,7 @@ import (
 	"path"
 	"time"
 
-	"labix.org/v2/mgo"
+	mgo "gopkg.in/mgo.v2"
 )
 
 type BlobStorage interface {

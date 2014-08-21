@@ -3,7 +3,7 @@ package mgometa
 import (
 	"github.com/sunfmin/mgodb"
 	"github.com/sunfmin/tenpu"
-	"labix.org/v2/mgo"
+	mgo "gopkg.in/mgo.v2"
 	"labix.org/v2/mgo/bson"
 )
 
