@@ -2,12 +2,8 @@ package thumbnails
 
 import (
 	"bytes"
-	_ "code.google.com/p/go.image/bmp"
 	"encoding/json"
 	"fmt"
-	"github.com/disintegration/imaging"
-	"github.com/sunfmin/resize"
-	"github.com/sunfmin/tenpu"
 	"image"
 	_ "image/gif"
 	"image/jpeg"
@@ -17,6 +13,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	_ "code.google.com/p/go.image/bmp"
+	"github.com/disintegration/imaging"
+	"github.com/sunfmin/resize"
+	"github.com/sunfmin/tenpu"
 )
 
 type ThumbnailSpec struct {
@@ -186,7 +187,7 @@ func MakeLoader(config *Configuration) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
-		log.Printf("Load file id:%s, name:%s, size:%.2f M", id, thumbAttachment.Filename, float32(thumbAttachment.ContentLength)/1024/1024)
+		// log.Printf("Load file id:%s, name:%s, size:%.2f M", id, thumbAttachment.Filename, float32(thumbAttachment.ContentLength)/1024/1024)
 		w.Header().Set("Content-Type", thumbAttachment.ContentType)
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", thumbAttachment.ContentLength))
 		tenpu.SetCacheControl(w, 30)

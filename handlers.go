@@ -33,7 +33,7 @@ func MakeFileLoader(maker StorageMaker) http.HandlerFunc {
 			return
 		}
 
-		log.Printf("Load file id:%s, name:%s, size:%.2f M", id, att.Filename, float32(att.ContentLength)/1024/1024)
+		// log.Printf("Load file id:%s, name:%s, size:%.2f M", id, att.Filename, float32(att.ContentLength)/1024/1024)
 		if download {
 			filename, _, _ := input.GetFileMeta()
 			w.Header().Set("Content-Disposition", "attachment; filename="+filename)
