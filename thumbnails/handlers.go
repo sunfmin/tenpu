@@ -14,10 +14,10 @@ import (
 	"net/http"
 	"os"
 
-	_ "code.google.com/p/go.image/bmp"
 	"github.com/disintegration/imaging"
 	"github.com/sunfmin/resize"
 	"github.com/sunfmin/tenpu"
+	_ "golang.org/x/image/bmp"
 )
 
 type ThumbnailSpec struct {
