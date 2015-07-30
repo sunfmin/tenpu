@@ -2,18 +2,19 @@ package gridfs
 
 import (
 	"archive/zip"
+
+	_ "golang.org/x/image/bmp"
 	// "bytes"
-	_ "code.google.com/p/go.image/bmp"
-	"github.com/sunfmin/mgodb"
-	"github.com/sunfmin/tenpu"
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
-	_ "image/png"
 	"io"
+	"log"
+
+	"github.com/sunfmin/mgodb"
+	"github.com/sunfmin/tenpu"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
-	"log"
 )
 
 type Storage struct {
