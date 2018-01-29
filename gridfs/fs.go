@@ -4,17 +4,15 @@ import (
 	"archive/zip"
 
 	_ "golang.org/x/image/bmp"
-	// "bytes"
+	"github.com/theplant/mgodb"
+	"github.com/theplant/tenpu"
+	"gopkg.in/mgo.v2"
+  "gopkg.in/mgo.v2/bson"
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
 	"log"
-
-	"github.com/sunfmin/mgodb"
-	"github.com/sunfmin/tenpu"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 )
 
 type Storage struct {

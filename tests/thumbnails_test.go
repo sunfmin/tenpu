@@ -3,9 +3,9 @@ package tests
 import (
 	"fmt"
 	"github.com/sunfmin/integrationtest"
-	"github.com/sunfmin/mgodb"
-	"github.com/sunfmin/tenpu"
-	"github.com/sunfmin/tenpu/thumbnails"
+	"github.com/theplant/mgodb"
+	"github.com/theplant/tenpu"
+	"github.com/theplant/tenpu/thumbnails"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"

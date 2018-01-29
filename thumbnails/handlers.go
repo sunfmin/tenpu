@@ -16,7 +16,7 @@ import (
 
 	"github.com/disintegration/imaging"
 	"github.com/sunfmin/resize"
-	"github.com/sunfmin/tenpu"
+	"github.com/theplant/tenpu"
 	_ "golang.org/x/image/bmp"
 )
 
